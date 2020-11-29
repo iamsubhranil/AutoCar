@@ -1,0 +1,532 @@
+import pygame
+import random
+import sys
+import math
+
+from pygame.locals import (
+    RLEACCEL,
+    K_UP,
+    K_DOWN,
+    K_LEFT,
+    K_RIGHT,
+    K_ESCAPE,
+    KEYDOWN,
+    QUIT
+)
+
+SCREEN_WIDTH = 720
+SCREEN_HEIGHT = 720
+
+ROAD_WIDTH = 48
+ROAD_HEIGHT = 48
+
+CAR_HEIGHT = 40
+CAR_WIDTH = 40
+
+SCALE_FACTOR_Y = SCREEN_WIDTH // ROAD_WIDTH
+SCALE_FACTOR_X = SCREEN_HEIGHT // ROAD_HEIGHT
+
+MOVE_LEFT = (-1, 0)
+MOVE_RIGHT = (1, 0)
+MOVE_UP = (0, -1)
+MOVE_DOWN = (0, 1)
+
+def load_roads():
+    images = [pygame.image.load("sprites/roadTexture_%03d.png" % i) for i in range(1, 21)]
+    images = [pygame.transform.scale(x, (ROAD_WIDTH, ROAD_HEIGHT)).convert() for x in images]
+    return images
+
+def load_background():
+    back = [pygame.image.load("sprites/background%02d.png" % i) for i in range(3)]
+    back = [pygame.transform.scale(img, (ROAD_WIDTH, ROAD_HEIGHT)).convert() for img in back]
+    return back
+
+def load_roadmap():
+    with open("sprites/roadmap") as f:
+        roadmap = f.readlines()
+        #print(roadmap)
+        roadmap = filter(lambda x: len(x) > 0 and not x.startswith("#") and not x.endswith(" N\n"), roadmap)
+        roadmap = [(int(x.split()[0]) - 1, set(map(int, x.split()[1:]))) for x in roadmap]
+        return roadmap
+
+def generate_possible_moves(source, coordinates):
+    y0, x0 = source
+    moves = []
+
+    if y0 > coordinates[0]:
+        moves.append(MOVE_LEFT)
+    if y0 < coordinates[2]:
+        moves.append(MOVE_RIGHT)
+
+    if x0 > coordinates[1]:
+        moves.append(MOVE_UP)
+    if x0 < coordinates[3]:
+        moves.append(MOVE_DOWN)
+
+    return moves, len(moves) > 0
+
+class RoadAI:
+
+    def __init__(self):
+        self.coordinates = None
+        self.vertices = None
+        self.g_scores = None
+        self.f_scores = None
+        self.goal = None
+
+    def h(self, current):
+        return abs(current[0] - self.goal[0]) + abs(current[1] - self.goal[1])
+
+    def g_score(self, vertex):
+        if vertex not in self.g_scores:
+            return 99999 # arbitrarily large value
+        return self.g_scores[vertex]
+
+    def f_score(self, vertex):
+        if vertex not in self.f_scores:
+            return 99999 # arbitrarily large value
+        return self.f_scores[vertex]
+
+    def get_neighbours(self, point, coordinates):
+        moves, can_move = generate_possible_moves(point, coordinates)
+        nmoves = []
+        for move in moves:
+            nmoves.append((point[0] + move[0], point[1] + move[1]))
+        #print(nmoves)
+        return nmoves
+
+    def d(self, current, pixel):
+        if pixel in self.vertices:
+            return 99999 # cannot be reached
+        return 1
+
+    def generate_directions(self, cameFrom, current):
+        final = []
+        while current in cameFrom:
+            final.insert(0, cameFrom[current][1])
+            current = cameFrom[current][0]
+        return final
+
+    # A* search
+    # directly copied from Wikipedia
+    def generate_moves(self, start):
+        #print(start)
+        self.f_scores = {}
+        self.g_scores = {}
+        #print_("Goal : " +  str(goal) + "Start:" + str(start))
+        #cameFrom = {}
+
+        self.g_scores = {}
+        self.g_scores[start] = 0
+
+        self.f_scores = {}
+        self.f_scores[start] = self.h(start)
+
+        openSet = [start]
+
+        while len(openSet) > 0:
+            current = min(openSet, key=self.f_score)
+            if current == self.goal:
+                #directions = self.generate_directions(cameFrom, current)
+                #return directions
+                return True
+
+            openSet.remove(current)
+            curr_gscore = self.g_score(current)
+
+            neighbours = self.get_neighbours(current, self.coordinates)
+            for direction, neighbour in enumerate(neighbours):
+                tentative_gscore = curr_gscore + self.d(current, neighbour)
+                if tentative_gscore < self.g_score(neighbour):
+                    #cameFrom[neighbour] = (current, direction)
+                    self.g_scores[neighbour] = tentative_gscore
+                    self.f_scores[neighbour] = self.g_score(neighbour) + self.h(neighbour)
+                    if neighbour not in openSet:
+                        openSet.append(neighbour)
+        return False
+
+class Roadmap:
+
+    def __init__(self):
+        self.roadmap = load_roadmap()
+        # mapping the displacements into directions 
+        self.movement = {
+
+            # (displacement_x, displacement_y, entry): exit
+            (1, 0, None): 2,
+            (1, 0, 1): 2,
+            (1,-1, 1): 3,
+            (1, 1, 1): 4,
+
+            (-1, 0, None): 1,
+            (-1, 0, 2): 1,
+            (-1,-1, 2): 3,
+            (-1, 1, 2): 4,
+
+            (0, 1, None): 4,
+            (-1, 1, 3): 1,
+            (1, 1, 3): 2,
+            (0, 1, 3): 4,
+
+            (0, -1, None): 3,
+            (-1, -1, 4): 1,
+            (1, -1, 4): 2,
+            (0, -1, 4): 3
+        }
+
+        self.exit_to_entry = {1:2, 2:1, 4:3, 3:4}
+        print(self.roadmap)
+        print(self.movement)
+        self.ai = RoadAI()
+
+    def norm(self, x):
+        if x < -1:
+            return -1
+        if x > 1:
+            return 1
+        return x
+
+    def get_end(self, move, start=True):
+        exit = self.movement[(*move, None)]
+        end_move = set([exit])
+        for road in self.roadmap:
+            if road[1] == end_move:
+                return road[0], exit
+
+    def inverse(self, x):
+        a, b = x
+        if a != 0:
+            a = -a
+        if b != 0:
+            b = -b
+        return (a, b)
+
+    def generate_sprites(self, final_moves):
+        sprites = []
+        # select the first move only based on the exit
+        start, exit = self.get_end(final_moves[0])
+        sprites.append(start)
+        #print(sprites)
+        prev_move = final_moves[0]
+        #entry = exit
+        for move in final_moves[1:]:
+            #print(prev_move, move, exit)
+            entry = self.exit_to_entry[exit]
+            nmove = move
+            if prev_move != move:
+                #prev_move = self.inverse(prev_move)
+                nmove = (prev_move[0] + move[0], prev_move[1] + move[1])
+            exit = self.movement[(*nmove, entry)]
+            entry_exit = (entry, exit)
+            while True:
+                # randomly select a piece of road
+                road = random.choice(self.roadmap)
+                if road[1].issuperset(entry_exit):
+                    sprites.append(road[0])
+                    break
+            prev_move = move
+        sprites.append(self.get_end(self.inverse(final_moves[-1]), start=False)[0])
+        return sprites
+
+    # given a pair of source and destination vertices, it will
+    # generate a random path, and return the list of sprites and
+    # their coordinates which will form the path
+    def generate_path(self, source, dest, coordinates):
+        vertices = set()
+        vertices.add(source)
+        path, final_moves, result = self.generate_path_it(source, dest, coordinates)
+        if result:
+            return path, final_moves
+        else:
+            print("No path found from", source, "to", dest, "using", coordinates)
+            return None, None
+
+    def generate_path_it(self, source, dest, coordinates):
+        final_path = [source]
+        final_moves = []
+        stack = [[source, True]]
+        movestack = []
+        y1, x1 = dest
+        vertices = set()
+        vertices.add(source)
+        self.ai.coordinates = coordinates
+        self.ai.vertices = vertices
+        self.ai.goal = dest
+        while len(stack) > 0:
+            points, prepare = stack[-1]
+            y0, x0 = points
+            print("\b" * 80, "Checking %03d, %03d" % (y0, x0), end='')
+            if prepare:
+                moves, can_move = generate_possible_moves(points, coordinates)
+                if not can_move:
+                    #print("False1", end='')
+                    stack.pop()
+                    continue
+                #choices = set()
+                random.shuffle(moves)
+                movestack.append([moves, 0])
+                stack[-1][1] = False
+
+            moves, i = movestack[-1]
+
+            # this cannot happen anymore
+            #if point != None:
+            #    print("here")
+            #    vertices.discard(point)
+            #    final_path.pop()
+            breakall = False
+            for ni, move_point in enumerate(moves[i:], i):
+                move_y, move_x = move_point
+                #print(movestack)
+                #print(points, move_y, move_x)
+                point = (y0 + move_y, x0 + move_x)
+                if point not in vertices:
+                    #print(point[0], point[1])
+                    if point[0] == y1 and point[1] == x1:
+                        vertices.add(point)
+                        final_path.append(dest)
+                        final_moves.append(move_point)
+                        #print("True0", end='')
+                        return final_path, final_moves, True
+                    elif self.ai.generate_moves(point):
+                        vertices.add(point)
+                        final_path.append(point)
+                        final_moves.append(move_point)
+                        movestack[-1][1] = ni + 1
+                        stack.append([point, True])
+                        breakall = True
+                        break
+                if breakall:
+                    break
+            if not breakall:
+                movestack.pop()
+                stack.pop()
+        return final_path, None, False
+
+def print_path(path, final_moves, endy, endx):
+    #print(path)
+    #print(final_moves)
+    print()
+    for j in range(endx + 1):
+        for i in range(endy + 1):
+            if (i, j) in path:
+                try:
+                    y, x = final_moves[path.index((i, j))]
+                    hm = ["←", "", "→"]
+                    vm = ["↑", "", "↓"]
+                    print(max(hm[y + 1], vm[x + 1], key=len), end=' ')
+                except:
+                    print("ST", end=' ')
+            else:
+                print(" ", end=' ')
+        print()
+
+class Road(pygame.sprite.Sprite):
+
+    def __init__(self, coordinate, road):
+        super(Road, self).__init__()
+        self.surf = road
+        self.surf.set_colorkey((33, 191, 143), RLEACCEL)
+        self.rect = self.surf.get_rect(topleft=(coordinate[0] * ROAD_WIDTH,
+                                                coordinate[1] * ROAD_HEIGHT))
+        #print(self.rect)
+    def update(self):
+        pass
+
+class Car(pygame.sprite.Sprite):
+
+    CarImage = pygame.image.load("sprites/cars/hatchbackSports_01_cropped.png")
+    CarImage = pygame.transform.scale(CarImage, (CAR_WIDTH, CAR_HEIGHT))
+
+    def __init__(self):
+        super(Car, self).__init__()
+        self.surf = Car.CarImage.convert_alpha()
+        self.rect = self.surf.get_rect(center=(CAR_WIDTH // 2, CAR_HEIGHT // 2))
+        self.speed = 1
+        self.maxspeed = 4
+        self.movement = { K_UP: (0, -self.speed),
+                         K_DOWN: (0, self.speed),
+                         K_LEFT: (-self.speed, 0),
+                         K_RIGHT: (self.speed, 0)}
+        self.speed_right = 0.1
+        self.speed_bottom = 0.1
+        self.deceleration_rate = 0.90 # at each update, the speed will be this times of the previous
+        self.accelaration_rate = 1.10 # at each key press, this is the amount of speed increase
+        self.horizontal_move = 0
+        self.vertical_move = 0
+        self.target_rotation = 0
+        self.current_rotation = 0
+        self.rotation_delta = 8
+
+    def norm(self, speed):
+        if speed > self.maxspeed:
+            return self.maxspeed
+        elif speed < -self.maxspeed:
+            return -self.maxspeed
+        return speed
+
+    # accelaration/deceleration rates will decrease
+    # as the speeds approach to +-5
+    # as they are approaching 0, it will increase.
+    # this will only happen when the user presses
+    # a key. in all other cases, the rates will
+    # gradually decrease over time
+    def calculate_rates(self):
+        pass
+
+    def update(self, key_pressed, boundary):
+        y, x = self.rect.right, self.rect.bottom
+
+        moved_right, moved_bottom = False, False
+        for key in self.movement:
+            if key_pressed[key]:
+                sr, sb = self.movement[key]
+                if sr != 0:
+                    if self.horizontal_move == 0 or \
+                        (self.horizontal_move == 1 and self.speed_right < 0.01) or \
+                        (self.horizontal_move == -1 and self.speed_right > -0.01):
+                        delta = sr
+                    else:
+                        delta = abs(self.speed_right * self.accelaration_rate) * sr
+                    self.speed_right += delta
+                    self.speed_right = self.norm(self.speed_right)
+                    self.rect.move_ip(self.speed_right, 0)
+                    moved_right = True
+                if sb != 0:
+                    if self.vertical_move == 0 or \
+                            (self.vertical_move == 1 and self.speed_bottom < 0.01) or \
+                            (self.vertical_move == -1 and self.speed_bottom > 0.01):
+                        delta = sb
+                    else:
+                        delta = abs(self.speed_bottom * self.accelaration_rate) * sb
+                    self.speed_bottom += delta
+                    self.speed_bottom = self.norm(self.speed_bottom)
+                    self.rect.move_ip(0, self.speed_bottom)
+                    moved_bottom = True
+
+        if not moved_right:
+            if self.speed_right != 0:
+                self.speed_right *= self.deceleration_rate
+            self.rect.move_ip(self.speed_right, 0)
+            #self.speed_right = self.norm(self.speed_right)
+        if not moved_bottom:
+            if self.speed_bottom != 0:
+                self.speed_bottom *= self.deceleration_rate
+            self.rect.move_ip(0, self.speed_bottom)
+
+        if moved_right or moved_bottom:
+            self.horizontal_move, self.vertical_move = sr, sb
+            newy, newx = self.rect.right, self.rect.bottom
+            rad = math.atan2(newy - y, newx - x)
+            deg = math.degrees(rad) - 90
+            self.target_rotation = int(deg)
+            self.target_rotation = self.rotation_delta * round(self.target_rotation / self.rotation_delta)
+            if self.target_rotation < -180:
+                self.target_rotation += 360
+            elif self.target_rotation > 180:
+                self.target_rotation -= 360
+            cr, tr = self.current_rotation, self.target_rotation
+            if (cr >= 0 and tr >= 0) or (cr < 0 and tr < 0):
+                if cr > tr:
+                    #pass
+                    self.rotation_delta = -abs(self.rotation_delta)
+                else:
+                    #pass
+                    self.rotation_delta = abs(self.rotation_delta)
+            else:
+                if cr >= 0:
+                    positive_rotation = 180 - cr + 180 + tr
+                    negative_rotation = cr + abs(tr)
+                else:
+                    positive_rotation = tr + abs(cr)
+                    negative_rotation = (180 + cr) + (180 - tr)
+                #print(positive_rotation, negative_rotation)
+                if positive_rotation > negative_rotation:
+                    self.rotation_delta = -abs(self.rotation_delta)
+                else:
+                    self.rotation_delta = abs(self.rotation_delta)
+
+
+        #print(self.target_rotation, self.current_rotation, self.rotation_delta)
+
+        if self.current_rotation != self.target_rotation:
+            #bl, br = self.rect.bottomleft, self.rect.bottomright
+            center = self.rect.center
+            self.surf = pygame.transform.rotate(Car.CarImage, self.current_rotation).convert_alpha()
+            #self.rect.bottomleft, self.rect.bottomright = bl, br
+            self.rect.center = center
+            self.current_rotation += self.rotation_delta
+            if self.current_rotation == 180 and self.target_rotation == -180 \
+                    or self.current_rotation == -180 and self.target_rotation == 180:
+                self.current_rotation = self.target_rotation
+            elif self.current_rotation > 180:
+                self.current_rotation -= 360
+            elif self.current_rotation < -180:
+                self.current_rotation += 360
+                #self.rotation_delta = abs(self.rotation_delta)
+            #self.current_rotation = self.current_rotation % 180
+
+        if self.rect.left < 0:
+            self.rect.left = 0
+        if self.rect.right > SCREEN_WIDTH:
+            self.rect.right = SCREEN_WIDTH
+        if self.rect.top < 0:
+            self.rect.top = 0
+        if self.rect.bottom > SCREEN_HEIGHT:
+            self.rect.bottom = SCREEN_HEIGHT
+        #if pygame.sprite.spritecollideany(self, boundary):
+        #    self.rect.x, self.rect.y = x, y
+        #    self.speed_bottom = self.speed_right = 0
+
+def main():
+    pygame.init()
+
+    roadmap = Roadmap()
+    endy, endx = SCALE_FACTOR_Y, SCALE_FACTOR_X
+    path, final_moves = roadmap.generate_path((0, 0), (endy - 1, endx - 1), (0, 0, endy - 1, endx - 1))
+    print_path(path, final_moves, endy, endx)
+    sprite_indices = roadmap.generate_sprites(final_moves)
+
+    roads = pygame.sprite.Group()
+    #print(len(path), len(final_moves), len(sprite_indices))
+
+    screen = pygame.display.set_mode([SCREEN_WIDTH, SCREEN_HEIGHT])
+    road_images = load_roads()
+    for i, coordinate in enumerate(path):
+        roads.add(Road(coordinate, road_images[sprite_indices[i]]))
+    backgrounds = pygame.sprite.Group()
+    back = load_background()
+    for i in range(endy):
+        for j in range(endx):
+            #if (i, j) not in path:
+            backgrounds.add(Road((i, j), random.choice(back)))
+    running = True
+
+    clock = pygame.time.Clock()
+
+    car = Car()
+
+    for road in roads:
+        screen.blit(road.surf, road.rect)
+    for back in backgrounds:
+        screen.blit(back.surf, back.rect)
+
+    while running:
+        for event in pygame.event.get():
+            if event == QUIT or (event.type == KEYDOWN and event.key == K_ESCAPE):
+                running = False
+        pressed_keys = pygame.key.get_pressed()
+        car.update(pressed_keys, backgrounds)
+
+        for back in backgrounds:
+            screen.blit(back.surf, back.rect)
+        for road in roads:
+            screen.blit(road.surf, road.rect)
+        screen.blit(car.surf, car.rect)
+        pygame.display.flip()
+        clock.tick(60)
+
+    pygame.quit()
+
+if __name__ == "__main__":
+    main()

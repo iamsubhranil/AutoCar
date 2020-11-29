@@ -1,0 +1,42 @@
+# each tile will have entry and exit points, and for each pair of entry-exit point combinations, it will have a net displacement associated with it. since the map is unidirectional, we're going to note down only entry exit points. our program will select the most appropriate one at runtime.
+# 1 denotes left, 2 denotes right, 3 denotes up, 4 denotes down
+# 0 denotes we're ignoring the tile for now
+# file format
+# entry0<space>entry1<space>...
+#
+# vertical straight
+1 3 4
+# rounded corner top
+2 2 4
+3 1 4
+# rect corner top
+4 2 4
+5 1 4
+# center
+6 1 2 3 4 N
+# horizontal straight
+7 1 2
+# rounded corner down
+8 3 2
+9 3 1
+# rect corner down
+10 3 2
+11 3 1
+# circular center
+12 1 2 3 4 N
+# T right
+13 2 3 4 N
+# T left
+14 1 3 4 N
+# end top
+15 4
+# end bottom
+16 3
+# T up
+17 1 2 3 N
+# T down
+18 1 2 4 N
+# end left
+19 2
+# end right
+20 1
