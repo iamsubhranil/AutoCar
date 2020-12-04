@@ -1,7 +1,7 @@
 import pygame
 import random
 import sys
-import math
+from math import atan2, degrees, floor
 
 from pygame.locals import (
     RLEACCEL,
@@ -365,16 +365,7 @@ class Car(pygame.sprite.Sprite):
             return -self.maxspeed
         return speed
 
-    # accelaration/deceleration rates will decrease
-    # as the speeds approach to +-5
-    # as they are approaching 0, it will increase.
-    # this will only happen when the user presses
-    # a key. in all other cases, the rates will
-    # gradually decrease over time
-    def calculate_rates(self):
-        pass
-
-    def update(self, key_pressed, boundary):
+    def update(self, key_pressed, road):
         y, x = self.rect.right, self.rect.bottom
 
         moved_right, moved_bottom = False, False
@@ -417,8 +408,8 @@ class Car(pygame.sprite.Sprite):
         if moved_right or moved_bottom:
             self.horizontal_move, self.vertical_move = sr, sb
             newy, newx = self.rect.right, self.rect.bottom
-            rad = math.atan2(newy - y, newx - x)
-            deg = math.degrees(rad) - 90
+            rad = atan2(newy - y, newx - x)
+            deg = degrees(rad) - 90
             self.target_rotation = int(deg)
             self.target_rotation = self.rotation_delta * round(self.target_rotation / self.rotation_delta)
             if self.target_rotation < -180:
@@ -474,9 +465,73 @@ class Car(pygame.sprite.Sprite):
             self.rect.top = 0
         if self.rect.bottom > SCREEN_HEIGHT:
             self.rect.bottom = SCREEN_HEIGHT
-        #if pygame.sprite.spritecollideany(self, boundary):
-        #    self.rect.x, self.rect.y = x, y
-        #    self.speed_bottom = self.speed_right = 0
+        if pygame.sprite.spritecollideany(self, road):
+            return
+        else:
+            self.rect.right, self.rect.bottom = y, x
+
+def gettile(coordinate, tiles):
+    i, j = floor(coordinate[0] / ROAD_WIDTH), floor(coordinate[1] / ROAD_HEIGHT)
+    if i >= SCALE_FACTOR_Y:
+        i -= 1
+    if j >= SCALE_FACTOR_X:
+        j -= 1
+    return tiles[i * SCALE_FACTOR_X + j]
+
+def get_idx(y, x):
+    return floor(y / ROAD_WIDTH), floor(x / ROAD_HEIGHT)
+
+counter = 0
+def calculate_max_move(car, road_collection):
+    global counter
+    moving_right, moving_bottom = car.horizontal_move, car.vertical_move
+    base_i, base_j = get_idx(*car.rect.center)
+    if moving_bottom != 0:
+        # we're moving up or down
+        max_front = 0
+        base_idx = base_i * SCALE_FACTOR_X
+        # if moving_bottom == +1, moving_bottom + 1 == 2, // 2 works
+        # if moving_bottom == -1, moving_bottom + 1 == 0, hence -1 works
+        for end in range(base_j, ((SCALE_FACTOR_X + 1) * (moving_bottom + 1) // 2) - 1 , moving_bottom):
+            if road_collection[base_idx + end] == None:
+                max_front = abs(base_j - end)
+                break
+        if max_front > 0:
+            max_front -= 1
+        max_right = SCALE_FACTOR_Y - base_i - 1
+        for end in range(base_i, SCALE_FACTOR_Y, 1):
+            if road_collection[end * SCALE_FACTOR_X + base_j] == None:
+                max_right = abs(base_i - end) - 1
+                break
+        max_left = base_i
+        for end in range(base_i, -1, -1):
+            if road_collection[end * SCALE_FACTOR_X + base_j] == None:
+                max_left = abs(base_i - end) - 1
+                break
+        print("front:", max_front, "right:", max_right, "left:", max_left, counter)
+    elif moving_right != 0:
+        # we're moving left or right
+        max_front = 0
+        base_idx = base_i
+        for end in range(base_idx, ((SCALE_FACTOR_Y + 1) * (moving_right + 1) // 2) - 1, moving_right):
+            if road_collection[end * SCALE_FACTOR_X + base_j] == None:
+                max_front = abs(base_i - end)
+                break
+        if max_front > 0:
+            max_front -= 1
+        base_idx = base_i * SCALE_FACTOR_X
+        max_up = base_j
+        for end in range(base_j, -1, -1):
+            if road_collection[base_idx + end] == None:
+                max_up = abs(base_j - end) - 1
+                break
+        max_down = SCALE_FACTOR_X - base_j - 1
+        for end in range(base_j, SCALE_FACTOR_X, 1):
+            if road_collection[base_idx + end] == None:
+                max_down = abs(base_j - end) - 1
+                break
+        print("front:", max_front, "up:", max_up, "down:", max_down, counter)
+    counter += 1
 
 def main():
     pygame.init()
@@ -492,38 +547,104 @@ def main():
 
     screen = pygame.display.set_mode([SCREEN_WIDTH, SCREEN_HEIGHT])
     road_images = load_roads()
+    road_collection = [None] * (SCALE_FACTOR_X * SCALE_FACTOR_Y)
     for i, coordinate in enumerate(path):
-        roads.add(Road(coordinate, road_images[sprite_indices[i]]))
-    backgrounds = pygame.sprite.Group()
+        r = Road(coordinate, road_images[sprite_indices[i]])
+        roads.add(r)
+        road_collection[coordinate[0] * SCALE_FACTOR_X + coordinate[1]] = r
+    background_group = pygame.sprite.Group()
+    background_collection = []
     back = load_background()
     for i in range(endy):
         for j in range(endx):
             #if (i, j) not in path:
-            backgrounds.add(Road((i, j), random.choice(back)))
+            bg = Road((i, j), random.choice(back))
+            background_group.add(bg)
+            background_collection.append(bg)
     running = True
 
     clock = pygame.time.Clock()
 
     car = Car()
 
+    for back in background_group:
+        screen.blit(back.surf, back.rect)
     for road in roads:
         screen.blit(road.surf, road.rect)
-    for back in backgrounds:
-        screen.blit(back.surf, back.rect)
+    screen.blit(car.surf, car.rect)
+    pygame.display.update()
+
+    update_tiles = [None] * 9
+    update_tiles[8] = car
+
+    CHECK_KEYS = pygame.USEREVENT + 1
+    pygame.time.set_timer(CHECK_KEYS, 16) # polling rate
+
+    rects = []
+
+    pressed_keys = None
+
+    touched_points = []
+    update_tiles = []
 
     while running:
-        for event in pygame.event.get():
-            if event == QUIT or (event.type == KEYDOWN and event.key == K_ESCAPE):
-                running = False
-        pressed_keys = pygame.key.get_pressed()
-        car.update(pressed_keys, backgrounds)
+        if pygame.event.peek():
+            for event in pygame.event.get():
+                if event == QUIT or (event.type == KEYDOWN and event.key == K_ESCAPE):
+                    running = False
+            pressed_keys = pygame.key.get_pressed()
 
-        for back in backgrounds:
-            screen.blit(back.surf, back.rect)
-        for road in roads:
-            screen.blit(road.surf, road.rect)
+        # calculate indices of the surrounding tiles of the car
+        #   A   B   C
+        #   D  CAR  E
+        #   F   G   H
+        # not all times all of the surrounding tiles will be available,
+        # that is also considered
+        cary, carx = car.rect.center
+        base_i, base_j = get_idx(cary, carx)
+        idxs = [(base_i * SCALE_FACTOR_X) + base_j]
+        if base_i > 0:
+            new_i = (base_i - 1) * SCALE_FACTOR_X
+            idxs.append(new_i + base_j)
+            if base_j > 0:
+                idxs.append(new_i + base_j - 1)
+            if base_j < SCALE_FACTOR_X - 1:
+                idxs.append(new_i + base_j + 1)
+        if base_i < SCALE_FACTOR_Y - 1:
+            new_i = (base_i + 1) * SCALE_FACTOR_X
+            idxs.append(new_i + base_j)
+            if base_j > 0:
+                idxs.append(new_i + base_j - 1)
+            if base_j < SCALE_FACTOR_X - 1:
+                idxs.append(new_i + base_j + 1)
+        if base_j > 0:
+            idxs.append((base_i * SCALE_FACTOR_X) + (base_j - 1))
+        if base_j < SCALE_FACTOR_X - 1:
+            idxs.append((base_i * SCALE_FACTOR_X) + (base_j + 1))
+
+        # get the tiles
+        update_tiles = []
+        for i in idxs:
+            update_tiles.append(background_collection[i])
+        for i in idxs:
+            if road_collection[i] != None:
+                update_tiles.append(road_collection[i])
+
+        calculate_max_move(car, road_collection)
+
+        rects = [(v.surf, v.rect) for v in update_tiles]
+        #print([v[1] for v in rects])
+        if pressed_keys != None:
+            car.update(pressed_keys, roads)
+            pressed_keys = None
+
+        screen.blits(rects)
         screen.blit(car.surf, car.rect)
-        pygame.display.flip()
+
+        pygame.display.update([v[1] for v in rects])
+        pygame.display.update(car.rect)
+        #pygame.display.flip()
+        #print(clock.get_rawtime(), clock.get_fps())
         clock.tick(60)
 
     pygame.quit()
