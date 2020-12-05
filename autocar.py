@@ -323,8 +323,9 @@ def print_path(path, final_moves, endy, endx):
 
 class Road(pygame.sprite.Sprite):
 
-    def __init__(self, coordinate, road):
+    def __init__(self, coordinate, road, roadid):
         super(Road, self).__init__()
+        self.roadid = roadid
         self.surf = road
         self.surf.set_colorkey((33, 191, 143), RLEACCEL)
         self.rect = self.surf.get_rect(topleft=(coordinate[0] * ROAD_WIDTH,
@@ -481,57 +482,162 @@ def gettile(coordinate, tiles):
 def get_idx(y, x):
     return floor(y / ROAD_WIDTH), floor(x / ROAD_HEIGHT)
 
-counter = 0
-def calculate_max_move(car, road_collection):
-    global counter
-    moving_right, moving_bottom = car.horizontal_move, car.vertical_move
-    base_i, base_j = get_idx(*car.rect.center)
-    if moving_bottom != 0:
-        # we're moving up or down
-        max_front = 0
+class CarAI:
+
+    def __init__(self, car, road_collection, roadmap, dest):
+        self.car = car
+        self.visited_cells = set()
+        self.pressed_keys = {
+            K_UP: False,
+            K_DOWN: False,
+            K_LEFT: False,
+            K_RIGHT: False,
+        }
+        self.current_direction = None
+        self.goal_cell = None
+        self.counter = 0
+        self.road_collection = road_collection
+        self.entering_from = { # maps present direction with possible entry
+            K_UP: 4,
+            K_DOWN: 3,
+            K_LEFT: 2,
+            K_RIGHT: 1
+        }
+        self.roadmap = {}
+        for a, b in roadmap:
+            self.roadmap[a] = b
+        self.dest = dest
+        self.calculate_first_move(0, 0)
+
+    def should_go(self, y, x, base_i, base_j):
+        if (base_i + y, base_j + x) in self.visited_cells:
+            return False
+        return True
+
+    def calculate_first_move(self, base_i, base_j):
+        # calculate max distance on the right
+        max_right = SCALE_FACTOR_Y - 1
+        direction = self.entering_from[K_LEFT]
+        for i in range(0, SCALE_FACTOR_Y):
+            road = self.road_collection[(base_i + i) * SCALE_FACTOR_X + base_j]
+            if road == None or (direction not in self.roadmap[road.roadid]):
+                print("right:", i, direction, self.roadmap[road.roadid])
+                max_right = i
+                break
+        max_down = SCALE_FACTOR_X - 1
         base_idx = base_i * SCALE_FACTOR_X
-        # if moving_bottom == +1, moving_bottom + 1 == 2, // 2 works
-        # if moving_bottom == -1, moving_bottom + 1 == 0, hence -1 works
-        for end in range(base_j, ((SCALE_FACTOR_X + 1) * (moving_bottom + 1) // 2) - 1 , moving_bottom):
-            if road_collection[base_idx + end] == None:
-                max_front = abs(base_j - end)
+        direction = self.entering_from[K_UP]
+        for i in range(0, SCALE_FACTOR_X):
+            road = self.road_collection[base_idx + base_j + i]
+            if road == None or (direction not in self.roadmap[road.roadid]):
+                print("down:", i, direction, self.roadmap[road.roadid])
+                max_down = i
                 break
-        if max_front > 0:
-            max_front -= 1
-        max_right = SCALE_FACTOR_Y - base_i - 1
-        for end in range(base_i, SCALE_FACTOR_Y, 1):
-            if road_collection[end * SCALE_FACTOR_X + base_j] == None:
-                max_right = abs(base_i - end) - 1
-                break
-        max_left = base_i
-        for end in range(base_i, -1, -1):
-            if road_collection[end * SCALE_FACTOR_X + base_j] == None:
-                max_left = abs(base_i - end) - 1
-                break
-        print("front:", max_front, "right:", max_right, "left:", max_left, counter)
-    elif moving_right != 0:
-        # we're moving left or right
-        max_front = 0
-        base_idx = base_i
-        for end in range(base_idx, ((SCALE_FACTOR_Y + 1) * (moving_right + 1) // 2) - 1, moving_right):
-            if road_collection[end * SCALE_FACTOR_X + base_j] == None:
-                max_front = abs(base_i - end)
-                break
-        if max_front > 0:
-            max_front -= 1
-        base_idx = base_i * SCALE_FACTOR_X
-        max_up = base_j
-        for end in range(base_j, -1, -1):
-            if road_collection[base_idx + end] == None:
-                max_up = abs(base_j - end) - 1
-                break
-        max_down = SCALE_FACTOR_X - base_j - 1
-        for end in range(base_j, SCALE_FACTOR_X, 1):
-            if road_collection[base_idx + end] == None:
-                max_down = abs(base_j - end) - 1
-                break
-        print("front:", max_front, "up:", max_up, "down:", max_down, counter)
-    counter += 1
+        print(max_right, max_down)
+        if max_right > max_down:
+            self.pressed_keys[K_RIGHT] = True
+            self.goal_cell = (base_i + max_right, base_j)
+            self.current_direction = K_RIGHT
+        else:
+            self.pressed_keys[K_DOWN] = True
+            self.goal_cell = (base_i, base_j + max_down)
+            self.current_direction = K_DOWN
+        return self.pressed_keys
+
+    def calculate_next_move(self):
+        for key in self.pressed_keys:
+            self.pressed_keys[key] = False
+        base_i, base_j = get_idx(*self.car.rect.center)
+        if self.goal_cell != None:
+            if (base_i, base_j) == self.goal_cell:
+                if self.goal_cell == self.dest:
+                    return self.pressed_keys
+                self.goal_cell = None
+            else:
+               self.pressed_keys[self.current_direction] = True
+               self.visited_cells.add((base_i, base_j))
+            return self.pressed_keys
+        moving_right, moving_bottom = self.car.horizontal_move, self.car.vertical_move
+        if moving_bottom != 0:
+            # we're moving up or down
+            max_front = 0
+            base_idx = base_i * SCALE_FACTOR_X
+            # if moving_bottom == +1, moving_bottom + 1 == 2, // 2 works
+            # if moving_bottom == -1, moving_bottom + 1 == 0, hence -1 works
+            for end in range(base_j, ((SCALE_FACTOR_X + 1) * (moving_bottom + 1) // 2) - 1 , moving_bottom):
+                if self.road_collection[base_idx + end] == None:
+                    max_front = abs(base_j - end)
+                    break
+            if max_front > 0:
+                max_front -= 1
+            max_right = SCALE_FACTOR_Y - base_i - 1
+            # make sure we take right turn on valid roads
+            direction = self.entering_from[K_RIGHT]
+            for end in range(base_i + 1, SCALE_FACTOR_Y, 1):
+                road = self.road_collection[end * SCALE_FACTOR_X + base_j]
+                if road == None or (direction not in self.roadmap[road.roadid]):
+                    max_right = abs(base_i - end) - 1
+                    break
+            max_left = base_i
+            direction = self.entering_from[K_LEFT]
+            for end in range(base_i - 1, -1, -1):
+                road = self.road_collection[end * SCALE_FACTOR_X + base_j]
+                if road == None or (direction not in self.roadmap[road.roadid]):
+                    max_left = abs(base_i - end) - 1
+                    break
+
+            if (max_right > max_left and self.should_go(max_right, 0, base_i, base_j)) or \
+                    not self.should_go(-max_left, 0, base_i, base_j):
+                key = K_RIGHT
+                delta = max_right
+            else:
+                key = K_LEFT
+                delta = -max_left
+
+            self.pressed_keys[key] = True
+            self.current_direction = key
+            self.goal_cell = (base_i + delta, base_j)
+            print("front:", max_front, "right:", max_right, "left:", max_left, self.counter)
+        elif moving_right != 0:
+            # we're moving left or right
+            max_front = 0
+            base_idx = base_i
+            for end in range(base_idx, ((SCALE_FACTOR_Y + 1) * (moving_right + 1) // 2) - 1, moving_right):
+                if self.road_collection[end * SCALE_FACTOR_X + base_j] == None:
+                    max_front = abs(base_i - end)
+                    break
+            if max_front > 0:
+                max_front -= 1
+            base_idx = base_i * SCALE_FACTOR_X
+            max_up = base_j
+            direction = self.entering_from[K_UP]
+            for end in range(base_j - 1, -1, -1):
+                road = self.road_collection[base_idx + end]
+                if road == None or (direction not in self.roadmap[road.roadid]):
+                    max_up = abs(base_j - end) - 1
+                    break
+            max_down = SCALE_FACTOR_X - base_j - 1
+            direction = self.entering_from[K_DOWN]
+            for end in range(base_j + 1, SCALE_FACTOR_X, 1):
+                road = self.road_collection[base_idx + end]
+                if road == None or (direction not in self.roadmap[road.roadid]):
+                    max_down = abs(base_j - end) - 1
+                    break
+
+            if max_up > max_down and self.should_go(0, -max_up, base_i, base_j) or \
+                    not self.should_go(0, max_down, base_i, base_j):
+                key = K_UP
+                delta = -max_up
+            else:
+                key = K_DOWN
+                delta = max_down
+
+            self.pressed_keys[key] = True
+            self.current_direction = key
+            self.goal_cell = (base_i, base_j + delta)
+            print("front:", max_front, "up:", max_up, "down:", max_down, self.counter)
+        self.counter += 1
+        return self.pressed_keys
 
 def main():
     pygame.init()
@@ -549,7 +655,7 @@ def main():
     road_images = load_roads()
     road_collection = [None] * (SCALE_FACTOR_X * SCALE_FACTOR_Y)
     for i, coordinate in enumerate(path):
-        r = Road(coordinate, road_images[sprite_indices[i]])
+        r = Road(coordinate, road_images[sprite_indices[i]], sprite_indices[i])
         roads.add(r)
         road_collection[coordinate[0] * SCALE_FACTOR_X + coordinate[1]] = r
     background_group = pygame.sprite.Group()
@@ -558,7 +664,7 @@ def main():
     for i in range(endy):
         for j in range(endx):
             #if (i, j) not in path:
-            bg = Road((i, j), random.choice(back))
+            bg = Road((i, j), random.choice(back), 0)
             background_group.add(bg)
             background_collection.append(bg)
     running = True
@@ -587,12 +693,15 @@ def main():
     touched_points = []
     update_tiles = []
 
+    carai = CarAI(car, road_collection, roadmap.roadmap, path[-1])
+
     while running:
         if pygame.event.peek():
             for event in pygame.event.get():
                 if event == QUIT or (event.type == KEYDOWN and event.key == K_ESCAPE):
                     running = False
-            pressed_keys = pygame.key.get_pressed()
+                elif event.type == CHECK_KEYS:
+                    pressed_keys = carai.calculate_next_move()
 
         # calculate indices of the surrounding tiles of the car
         #   A   B   C
@@ -629,8 +738,6 @@ def main():
         for i in idxs:
             if road_collection[i] != None:
                 update_tiles.append(road_collection[i])
-
-        calculate_max_move(car, road_collection)
 
         rects = [(v.surf, v.rect) for v in update_tiles]
         #print([v[1] for v in rects])
