@@ -494,7 +494,6 @@ class CarAI:
             K_RIGHT: False,
         }
         self.current_direction = None
-        self.goal_cell = None
         self.counter = 0
         self.road_collection = road_collection
         self.entering_from = { # maps present direction with possible entry
@@ -507,12 +506,17 @@ class CarAI:
         for a, b in roadmap:
             self.roadmap[a] = b
         self.dest = dest
+        self.keymap = {
+            K_UP: "up",
+            K_DOWN: "down",
+            K_LEFT: "left",
+            K_RIGHT: "right"
+        }
+        self.present_cell = None
         self.calculate_first_move(0, 0)
 
     def should_go(self, y, x, base_i, base_j):
-        if (base_i + y, base_j + x) in self.visited_cells:
-            return False
-        return True
+        return (base_i + y, base_j + x) not in self.visited_cells
 
     def calculate_first_move(self, base_i, base_j):
         # calculate max distance on the right
@@ -535,79 +539,86 @@ class CarAI:
                 break
         print(max_right, max_down)
         if max_right > max_down:
-            self.pressed_keys[K_RIGHT] = True
-            self.goal_cell = (base_i + max_right, base_j)
-            self.current_direction = K_RIGHT
+            key = K_RIGHT
         else:
-            self.pressed_keys[K_DOWN] = True
-            self.goal_cell = (base_i, base_j + max_down)
-            self.current_direction = K_DOWN
+            key = K_DOWN
+
+        self.pressed_keys[key] = True
+        self.current_direction = key
+        self.present_cell = (base_i, base_j)
         return self.pressed_keys
 
     def calculate_next_move(self):
-        for key in self.pressed_keys:
-            self.pressed_keys[key] = False
+        self.pressed_keys[self.current_direction] = False
         base_i, base_j = get_idx(*self.car.rect.center)
-        if self.goal_cell != None:
-            if (base_i, base_j) == self.goal_cell:
-                if self.goal_cell == self.dest:
-                    return self.pressed_keys
-                self.goal_cell = None
-            else:
-               self.pressed_keys[self.current_direction] = True
-               self.visited_cells.add((base_i, base_j))
+        if self.current_direction == None:
+            return self.calculate_first_move(base_i, base_j)
+        if self.present_cell == self.dest:
             return self.pressed_keys
+        if self.present_cell == (base_i, base_j):
+            self.pressed_keys[self.current_direction] = True
+            return self.pressed_keys
+        self.visited_cells.add((base_i, base_j))
+        self.present_cell = (base_i, base_j)
+
         moving_right, moving_bottom = self.car.horizontal_move, self.car.vertical_move
+        if moving_right == 0 and moving_bottom == 0:
+            if self.current_direction == K_LEFT:
+                moving_right = -1
+            elif self.current_direction == K_RIGHT:
+                moving_right = 1
+            elif self.current_direction == K_UP:
+                moving_bottom = -1
+            else:
+                moving_bottom = 1
         if moving_bottom != 0:
             # we're moving up or down
-            max_front = 0
+            end_bottom = ((SCALE_FACTOR_X + 1) * (moving_bottom + 1)) // 2 - 1
+            max_front = abs(base_j - end_bottom)
             base_idx = base_i * SCALE_FACTOR_X
+            current_j = base_j
             # if moving_bottom == +1, moving_bottom + 1 == 2, // 2 works
             # if moving_bottom == -1, moving_bottom + 1 == 0, hence -1 works
-            for end in range(base_j, ((SCALE_FACTOR_X + 1) * (moving_bottom + 1) // 2) - 1 , moving_bottom):
-                if self.road_collection[base_idx + end] == None:
-                    max_front = abs(base_j - end)
+            direction = self.entering_from[self.current_direction]
+            for end in range(current_j + moving_bottom, end_bottom , moving_bottom):
+                road = self.road_collection[base_idx + end]
+                if road == None or (direction not in self.roadmap[road.roadid]):
+                    max_front = abs(base_j - end) - 1
                     break
-            if max_front > 0:
-                max_front -= 1
             max_right = SCALE_FACTOR_Y - base_i - 1
             # make sure we take right turn on valid roads
             direction = self.entering_from[K_RIGHT]
             for end in range(base_i + 1, SCALE_FACTOR_Y, 1):
-                road = self.road_collection[end * SCALE_FACTOR_X + base_j]
+                road = self.road_collection[end * SCALE_FACTOR_X + current_j]
                 if road == None or (direction not in self.roadmap[road.roadid]):
                     max_right = abs(base_i - end) - 1
                     break
             max_left = base_i
             direction = self.entering_from[K_LEFT]
             for end in range(base_i - 1, -1, -1):
-                road = self.road_collection[end * SCALE_FACTOR_X + base_j]
+                road = self.road_collection[end * SCALE_FACTOR_X + current_j]
                 if road == None or (direction not in self.roadmap[road.roadid]):
                     max_left = abs(base_i - end) - 1
                     break
+            print(self.counter, self.keymap[self.current_direction] + ":",
+                  max_front, "right:", max_right, "left:", max_left, end='')
 
-            if (max_right > max_left and self.should_go(max_right, 0, base_i, base_j)) or \
-                    not self.should_go(-max_left, 0, base_i, base_j):
-                key = K_RIGHT
-                delta = max_right
-            else:
-                key = K_LEFT
-                delta = -max_left
-
-            self.pressed_keys[key] = True
-            self.current_direction = key
-            self.goal_cell = (base_i + delta, base_j)
-            print("front:", max_front, "right:", max_right, "left:", max_left, self.counter)
-        elif moving_right != 0:
+            # last item denotes preference
+            can_move = [(self.current_direction, max_front, 0, max_front * moving_bottom, 0,
+                         self.keymap[self.current_direction]),
+                        (K_RIGHT, max_right, max_right, 0, 1, self.keymap[K_RIGHT]),
+                        (K_LEFT, max_left, -max_left, 0, 1, self.keymap[K_LEFT])]
+        else: # either one of moving_right or bottom is nonzero, we've ensured that
             # we're moving left or right
-            max_front = 0
+            end_right = ((SCALE_FACTOR_Y + 1) * (moving_right + 1) // 2) - 1
+            max_front = abs(base_i - end_right)
             base_idx = base_i
-            for end in range(base_idx, ((SCALE_FACTOR_Y + 1) * (moving_right + 1) // 2) - 1, moving_right):
-                if self.road_collection[end * SCALE_FACTOR_X + base_j] == None:
-                    max_front = abs(base_i - end)
+            direction = self.entering_from[self.current_direction]
+            for end in range(base_idx + moving_right, end_right, moving_right):
+                road = self.road_collection[end * SCALE_FACTOR_X + base_j]
+                if road == None or (direction not in self.roadmap[road.roadid]):
+                    max_front = abs(base_i - end) - 1
                     break
-            if max_front > 0:
-                max_front -= 1
             base_idx = base_i * SCALE_FACTOR_X
             max_up = base_j
             direction = self.entering_from[K_UP]
@@ -623,19 +634,22 @@ class CarAI:
                 if road == None or (direction not in self.roadmap[road.roadid]):
                     max_down = abs(base_j - end) - 1
                     break
+            print(self.counter, self.keymap[self.current_direction] + ":",
+                  max_front, "up:", max_up, "down:", max_down, end='')
 
-            if max_up > max_down and self.should_go(0, -max_up, base_i, base_j) or \
-                    not self.should_go(0, max_down, base_i, base_j):
-                key = K_UP
-                delta = -max_up
-            else:
-                key = K_DOWN
-                delta = max_down
-
-            self.pressed_keys[key] = True
-            self.current_direction = key
-            self.goal_cell = (base_i, base_j + delta)
-            print("front:", max_front, "up:", max_up, "down:", max_down, self.counter)
+            can_move = [(self.current_direction, max_front, max_front * moving_right, 0, 0,
+                         self.keymap[self.current_direction]),
+                        (K_UP, max_up, 0, -max_up, 1, self.keymap[K_UP]),
+                        (K_DOWN, max_down, 0, max_down, 1, self.keymap[K_DOWN])]
+        #print("\ncan_move:", can_move)
+        can_move = sorted(can_move, key=lambda x: (x[1], x[4]))
+        #print("can_move(sorted):", can_move)
+        can_move = list(filter(lambda x: self.should_go(x[2], x[3], base_i, base_j), can_move))
+        #print("can_move(filtered):", can_move)
+        key = can_move[-1][0]
+        print(" going", self.keymap[key])
+        self.pressed_keys[key] = True
+        self.current_direction = key
         self.counter += 1
         return self.pressed_keys
 
