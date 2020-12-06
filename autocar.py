@@ -514,6 +514,14 @@ class CarAI:
         self.present_cell = None
         self.current_direction = K_UP
 
+    def calculate_max_distance(self, direction, default_max, start, stop, step):
+        direction = self.entering_from[direction]
+        for end in range(start, stop, step):
+            road = self.road_collection[end]
+            if road == None or (direction not in self.roadmap[road.roadid]):
+                return abs((start - end) // step)
+        return default_max
+
     def calculate_next_move(self, debug=True):
         self.pressed_keys[self.current_direction] = False
         base_i, base_j = get_idx(*self.car.rect.center)
@@ -525,37 +533,16 @@ class CarAI:
         self.visited_cells.add((base_i, base_j))
         self.present_cell = (base_i, base_j)
 
-        max_right = SCALE_FACTOR_Y - base_i - 1
-        # make sure we take right turn on valid roads
-        direction = self.entering_from[K_RIGHT]
-        for end in range(base_i + 1, SCALE_FACTOR_Y, 1):
-            road = self.road_collection[end * SCALE_FACTOR_X + base_j]
-            if road == None or (direction not in self.roadmap[road.roadid]):
-                max_right = abs(base_i - end) - 1
-                break
-        max_left = base_i
-        direction = self.entering_from[K_LEFT]
-        for end in range(base_i - 1, -1, -1):
-            road = self.road_collection[end * SCALE_FACTOR_X + base_j]
-            if road == None or (direction not in self.roadmap[road.roadid]):
-                max_left = abs(base_i - end) - 1
-                break
-
-        base_idx = base_i * SCALE_FACTOR_X
-        max_up = base_j
-        direction = self.entering_from[K_UP]
-        for end in range(base_j - 1, -1, -1):
-            road = self.road_collection[base_idx + end]
-            if road == None or (direction not in self.roadmap[road.roadid]):
-                max_up = abs(base_j - end) - 1
-                break
-        max_down = SCALE_FACTOR_X - base_j - 1
-        direction = self.entering_from[K_DOWN]
-        for end in range(base_j + 1, SCALE_FACTOR_X, 1):
-            road = self.road_collection[base_idx + end]
-            if road == None or (direction not in self.roadmap[road.roadid]):
-                max_down = abs(base_j - end) - 1
-                break
+        max_right = self.calculate_max_distance(K_RIGHT, SCALE_FACTOR_Y - base_i - 1,
+            (base_i + 1) * SCALE_FACTOR_X + base_j, (SCALE_FACTOR_Y - 1) * SCALE_FACTOR_X + base_j + 1,
+                SCALE_FACTOR_X)
+        max_left = self.calculate_max_distance(K_LEFT, base_i,
+                (base_i - 1) * SCALE_FACTOR_X + base_j, -1,
+                -SCALE_FACTOR_X)
+        max_up = self.calculate_max_distance(K_UP, base_j,
+                base_i * SCALE_FACTOR_X + base_j - 1, base_i * SCALE_FACTOR_X - 1, -1)
+        max_down = self.calculate_max_distance(K_DOWN, SCALE_FACTOR_X - base_j - 1,
+                base_i * SCALE_FACTOR_X + base_j + 1, (base_i + 1) * SCALE_FACTOR_X, 1)
         if debug:
             print('\b' * 85, self.counter,  "left:", max_left, "right:", max_right,
                   "up:", max_up, "down:", max_down, end='')
