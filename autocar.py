@@ -709,7 +709,13 @@ def main():
 
     carai = CarAI(car, road_collection, roadmap.roadmap, path[-1])
 
+    no_keys_pressed = {K_UP: False,
+                       K_DOWN: False,
+                       K_LEFT: False,
+                       K_RIGHT: False}
+
     while running:
+        pressed_keys = no_keys_pressed
         if pygame.event.peek():
             for event in pygame.event.get():
                 if event == QUIT or (event.type == KEYDOWN and event.key == K_ESCAPE):
@@ -755,9 +761,7 @@ def main():
 
         rects = [(v.surf, v.rect) for v in update_tiles]
         #print([v[1] for v in rects])
-        if pressed_keys != None:
-            car.update(pressed_keys, roads)
-            pressed_keys = None
+        car.update(pressed_keys, roads)
 
         screen.blits(rects)
         screen.blit(car.surf, car.rect)
