@@ -1,0 +1,21 @@
+SCREEN_WIDTH = 720
+SCREEN_HEIGHT = 720
+
+ROAD_WIDTH = 48
+ROAD_HEIGHT = 48
+
+CAR_HEIGHT = 40
+CAR_WIDTH = 40
+
+SCALE_FACTOR_Y = SCREEN_WIDTH // ROAD_WIDTH
+SCALE_FACTOR_X = SCREEN_HEIGHT // ROAD_HEIGHT
+
+MOVE_LEFT = (-1, 0)
+MOVE_RIGHT = (1, 0)
+MOVE_UP = (0, -1)
+MOVE_DOWN = (0, 1)
+
+CAR_SPRITE_LOCATION = "sprites/cars/hatchbackSports_01_cropped.png"
+ROADMAP_LOCATION = "sprites/roadmap"
+ROAD_SPRITE_LOCATION = "sprites/roadTexture_%03d.png"
+BACKGROUND_SPRITE_LOCATION = "sprites/background%02d.png"
