@@ -35,6 +35,7 @@ class Car(pygame.sprite.Sprite):
         self.target_rotation = 0
         self.current_rotation = 0
         self.rotation_delta = 8
+        self.killed = False
 
     def norm(self, speed):
         if speed > self.maxspeed:
@@ -146,5 +147,6 @@ class Car(pygame.sprite.Sprite):
         if pygame.sprite.spritecollideany(self, road):
             return
         else:
+            self.killed = True
             self.rect.right, self.rect.bottom = y, x
 
