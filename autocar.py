@@ -124,13 +124,8 @@ def main():
 
     CHECK_KEYS = pygame.USEREVENT + 1
     pygame.time.set_timer(CHECK_KEYS, 24) # polling rate
-
-    rects = []
-
-    pressed_keys = None
-
-    touched_points = []
-    update_tiles = []
+    FLUSH = CHECK_KEYS + 1
+    pygame.time.set_timer(FLUSH, 200)
 
     no_keys_pressed = [{K_UP: False,
                        K_DOWN: False,
@@ -161,64 +156,23 @@ def main():
                                     for network in children]
                         generations += 1
                     else:
-                        print("\b" * 80, "Generation: %-3d" % generations, "Alive:", "%-3d" % (num_ai - killed),
-                              "Killed:", "%-3d" % killed, end='')
-                        sys.stdout.flush()
+                        print("\b" * 80, "G: %-3d" % generations, "A:", "%-3d" % (num_ai - killed),
+                              "K:", "%-3d" % killed, "FT: %-2d" % clock.get_rawtime(),
+                              "FPS: %-2d" % clock.get_fps(), end='')
+                elif event.type == FLUSH:
+                    sys.stdout.flush()
 
-        # calculate indices of the surrounding tiles of the car
-        #   A   B   C
-        #   D  CAR  E
-        #   F   G   H
-        # not all times all of the surrounding tiles will be available,
-        # that is also considered
-        idxs = set()
-        visited_indices = set()
-        for carai in carais:
-            car = carai.car
-            cary, carx = car.rect.center
-            base_i, base_j = get_idx(cary, carx)
-            if (base_i, base_j) in visited_indices:
-                continue
-            visited_indices.add((base_i, base_j))
-            idxs.add((base_i * SCALE_FACTOR_X) + base_j)
-            if base_i > 0:
-                new_i = (base_i - 1) * SCALE_FACTOR_X
-                idxs.add(new_i + base_j)
-                if base_j > 0:
-                    idxs.add(new_i + base_j - 1)
-                if base_j < SCALE_FACTOR_X - 1:
-                    idxs.add(new_i + base_j + 1)
-            if base_i < SCALE_FACTOR_Y - 1:
-                new_i = (base_i + 1) * SCALE_FACTOR_X
-                idxs.add(new_i + base_j)
-                if base_j > 0:
-                    idxs.add(new_i + base_j - 1)
-                if base_j < SCALE_FACTOR_X - 1:
-                    idxs.add(new_i + base_j + 1)
-            if base_j > 0:
-                idxs.add((base_i * SCALE_FACTOR_X) + (base_j - 1))
-            if base_j < SCALE_FACTOR_X - 1:
-                idxs.add((base_i * SCALE_FACTOR_X) + (base_j + 1))
-
-        # get the tiles
-        update_tiles = []
-        for i in idxs:
-            update_tiles.append(background_collection[i])
-        for i in idxs:
-            if road_collection[i] != None:
-                update_tiles.append(road_collection[i])
-
-        rects = [(v.surf, v.rect) for v in update_tiles]
         #print([v[1] for v in rects])
         for i, ai in enumerate(carais):
             ai.car.update(pressed_keys[i], roads)
 
-        screen.blits(rects)
-        screen.blits([(ai.car.surf, ai.car.rect) for ai in carais])
-
-        pygame.display.update([v[1] for v in rects])
-        pygame.display.update([ai.car.rect for ai in carais])
-        #pygame.display.flip()
+        for background in background_group:
+            screen.blit(background.surf, background.rect)
+        for road in roads:
+            screen.blit(road.surf, road.rect)
+        for ai in carais:
+            screen.blit(ai.car.surf, ai.car.rect)
+        pygame.display.update()
         #print(clock.get_rawtime(), clock.get_fps())
         clock.tick(60)
 

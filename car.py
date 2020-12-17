@@ -47,6 +47,8 @@ class Car(pygame.sprite.Sprite):
         return speed
 
     def update(self, key_pressed, road):
+        if self.killed:
+            return
         y, x = self.rect.right, self.rect.bottom
 
         moved_right, moved_bottom = False, False
