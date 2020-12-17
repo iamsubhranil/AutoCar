@@ -91,10 +91,12 @@ def mutation(children, mutation_probability=0.1):
 # inputs are carais, outputs are the best NNs
 # n best candidates are selected
 def selection(carais, n=5):
-    best = sorted(carais, key=lambda x: x.score)
-    print([x.score for x in best[-n:]])
+    # choose only cars with unique scores
+    best = sorted(set(carais), key=lambda x: x.score)
+    numbest = min(len(best), n)
+    print([x.score for x in best[-numbest:]])
     # best networks will have the highest scores
-    return [ai.network for ai in best[-n:]]
+    return [ai.network for ai in best[-numbest:]]
 
 if __name__ == "__main__":
     generation()

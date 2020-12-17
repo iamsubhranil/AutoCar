@@ -162,6 +162,9 @@ class CarAI_NN:
             score += abs(a - b)
         self.score = ((1/score) * 0.5) + (self.alive_timer * 0.5)
 
+    def __hash__(self):
+        return hash(self.score)
+
     def calculate_next_move(self, time_passed, debug=False):
         self.pressed_keys[self.current_direction] = False
         if self.car.killed:
