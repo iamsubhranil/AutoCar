@@ -1,9 +1,13 @@
 import nn_orig as nn
-import random
+import numpy as np
 
 # crossover gene count denotes the number of parents which
 # participate in generation of a new child
-def crossover(parents, dim, num_children, crossover_gene_count=0):
+# keep_parent parents are kept as children
+def crossover(parents, parent_distribution, dim, num_children, crossover_gene_count=0,
+              keep_parent=2):
+
+    num_children -= keep_parent
 
     if crossover_gene_count < 2:
         crossover_gene_count = len(parents)
@@ -20,8 +24,8 @@ def crossover(parents, dim, num_children, crossover_gene_count=0):
         # sample pivot points for each parent
         # choose 1 less point, use to the last parent
         # to fill the rest of it
-        crossover_parents = random.sample(parents, k=crossover_gene_count)
-        points = sorted(random.sample(range(1, total_nodes), k=crossover_gene_count-1))
+        crossover_parents = np.random.choice(parents, size=crossover_gene_count, replace=False, p=parent_distribution)
+        points = sorted(np.random.choice(range(1, total_nodes), size=crossover_gene_count-1, replace=False))
         points.append(total_nodes)
         last_layer, last_node, last_weight = 0, 0, 0
         child = nn.NeuralNetwork(dim, False)
@@ -66,6 +70,8 @@ def crossover(parents, dim, num_children, crossover_gene_count=0):
 
         children.append(child)
 
+    if keep_parent > 0:
+        children.extend(parents[-keep_parent:])
     #print("Parents:")
     #for parent in parents:
     #    print("Parent:")
@@ -82,11 +88,14 @@ def mutation(children, mutation_probability=0.1):
     dim = children[0].topology
     num_layers = len(dim)
     for child in children:
-        if random.uniform(0.0, 1.0) <= mutation_probability:
-            layer = random.randint(1, num_layers - 1)
-            node = random.randint(0, dim[layer] - 1)
-            weight = random.randint(0, dim[layer - 1] - 1)
-            child.weights[layer][node][weight] = random.random()
+        if np.random.uniform(0.0, 1.0) <= mutation_probability:
+            # np randint range is [a, b)
+            # python randint range is [a, b]
+            # we want [a, b) in either case
+            layer = np.random.randint(1, num_layers)
+            node = np.random.randint(0, dim[layer])
+            weight = np.random.randint(0, dim[layer - 1])
+            child.weights[layer][node][weight] = np.random.random()
 
 # inputs are carais, outputs are the best NNs
 # n best candidates are selected
@@ -94,10 +103,10 @@ def selection(carais, n=5):
     # choose only cars with unique scores
     best = sorted(set(carais), key=lambda x: x.score)
     numbest = min(len(best), n)
-    print([x.score for x in best[-numbest:]])
     # best networks will have the highest scores
-    return [ai.network for ai in best[-numbest:]]
-
-if __name__ == "__main__":
-    generation()
+    selected = best[-numbest:]
+    total_score = sum([x.score for x in selected])
+    prob_dist = [i.score / total_score for i in selected]
+    print("\tBest:", selected[-1].score, "Worst:", selected[0].score)
+    return [ai.network for ai in selected], prob_dist
 

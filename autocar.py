@@ -137,6 +137,7 @@ def main():
                        K_LEFT: False,
                        K_RIGHT: False}] * num_ai
 
+    generations = 0
     while running:
         pressed_keys = no_keys_pressed
         if pygame.event.peek():
@@ -151,15 +152,18 @@ def main():
                         if ai.car.killed:
                             killed += 1
                             ai.car.kill()
-                    print("\b" * 80, "Alive:", num_ai - killed, "Killed:", killed, end='')
-                    sys.stdout.flush()
                     if killed == len(carais):
                         #print("here")
-                        parents = selection(carais)
-                        children = crossover(parents, dim, num_ai)
+                        parents, prob_dist = selection(carais)
+                        children = crossover(parents, prob_dist, dim, num_ai)
                         mutation(children)
                         carais = [CarAI_NN(road_collection, roadmap.roadmap, path[-1], network) \
                                     for network in children]
+                        generations += 1
+                    else:
+                        print("\b" * 80, "Generation: %-3d" % generations, "Alive:", "%-3d" % (num_ai - killed),
+                              "Killed:", "%-3d" % killed, end='')
+                        sys.stdout.flush()
 
         # calculate indices of the surrounding tiles of the car
         #   A   B   C

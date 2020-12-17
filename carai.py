@@ -165,6 +165,13 @@ class CarAI_NN:
     def __hash__(self):
         return hash(self.score)
 
+    def __eq__(self, other):
+        # this will only be called after a collision,
+        # which means 'other' already collides with self
+        # by score, so we return True so that 'other'
+        # is not put in that set
+        return True
+
     def calculate_next_move(self, time_passed, debug=False):
         self.pressed_keys[self.current_direction] = False
         if self.car.killed:
