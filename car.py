@@ -1,6 +1,6 @@
 import pygame
 from config import (CAR_WIDTH, CAR_HEIGHT, CAR_SPRITE_LOCATION,
-                    SCREEN_HEIGHT, SCREEN_WIDTH)
+                    CAR_SPRITE_COUNT, SCREEN_HEIGHT, SCREEN_WIDTH)
 
 from pygame.locals import (
     K_UP,
@@ -10,15 +10,17 @@ from pygame.locals import (
 )
 
 from math import atan2, degrees
+import random
 
 class Car(pygame.sprite.Sprite):
 
-    CarImage = pygame.image.load(CAR_SPRITE_LOCATION)
-    CarImage = pygame.transform.scale(CarImage, (CAR_WIDTH, CAR_HEIGHT))
+    CarImages = [pygame.image.load(CAR_SPRITE_LOCATION % i) for i in range(CAR_SPRITE_COUNT)]
+    CarImages = [pygame.transform.scale(image, (CAR_WIDTH, CAR_HEIGHT)) for image in CarImages]
 
     def __init__(self):
         super(Car, self).__init__()
-        self.surf = Car.CarImage.convert_alpha()
+        self.img = random.choice(Car.CarImages)
+        self.surf = self.img.convert_alpha()
         self.rect = self.surf.get_rect(center=(CAR_WIDTH // 2, CAR_HEIGHT // 2))
         self.speed = 1
         self.maxspeed = 4
@@ -122,7 +124,7 @@ class Car(pygame.sprite.Sprite):
         if self.current_rotation != self.target_rotation:
             #bl, br = self.rect.bottomleft, self.rect.bottomright
             center = self.rect.center
-            self.surf = pygame.transform.rotate(Car.CarImage, self.current_rotation).convert_alpha()
+            self.surf = pygame.transform.rotate(self.img, self.current_rotation).convert_alpha()
             #self.rect.bottomleft, self.rect.bottomright = bl, br
             self.rect.center = center
             self.current_rotation += self.rotation_delta

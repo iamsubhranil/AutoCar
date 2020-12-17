@@ -15,7 +15,8 @@ MOVE_RIGHT = (1, 0)
 MOVE_UP = (0, -1)
 MOVE_DOWN = (0, 1)
 
-CAR_SPRITE_LOCATION = "sprites/cars/hatchbackSports_01_cropped.png"
+CAR_SPRITE_LOCATION = "sprites/cars/car%d.png"
+CAR_SPRITE_COUNT = 7
 ROADMAP_LOCATION = "sprites/roadmap"
 ROAD_SPRITE_LOCATION = "sprites/roadTexture_%03d.png"
 BACKGROUND_SPRITE_LOCATION = "sprites/background%02d.png"
