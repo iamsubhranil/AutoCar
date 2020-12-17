@@ -168,10 +168,14 @@ def main():
         # not all times all of the surrounding tiles will be available,
         # that is also considered
         idxs = set()
+        visited_indices = set()
         for carai in carais:
             car = carai.car
             cary, carx = car.rect.center
             base_i, base_j = get_idx(cary, carx)
+            if (base_i, base_j) in visited_indices:
+                continue
+            visited_indices.add((base_i, base_j))
             idxs.add((base_i * SCALE_FACTOR_X) + base_j)
             if base_i > 0:
                 new_i = (base_i - 1) * SCALE_FACTOR_X
