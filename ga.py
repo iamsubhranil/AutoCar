@@ -1,4 +1,4 @@
-import nn_orig as nn
+from nn import NeuralNetwork
 import numpy as np
 
 # crossover gene count denotes the number of parents which
@@ -28,7 +28,7 @@ def crossover(parents, parent_distribution, dim, num_children, crossover_gene_co
         points = sorted(np.random.choice(range(1, total_nodes), size=crossover_gene_count-1, replace=False))
         points.append(total_nodes)
         last_layer, last_node, last_weight = 0, 0, 0
-        child = nn.NeuralNetwork(dim, False)
+        child = NeuralNetwork(dim, False)
         for point, parent in zip(points, crossover_parents):
             if point == total_nodes:
                 layer = len(dim) - 1

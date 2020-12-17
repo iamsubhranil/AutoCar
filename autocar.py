@@ -2,10 +2,10 @@ import pygame
 import random
 import sys
 
-from carai import CarAI, CarAI_NN, get_idx
+from carai import CarAI, get_idx
 from roadmap import Roadmap
 from math import floor
-from nn_orig import NeuralNetwork
+from nn import NeuralNetwork
 from ga import selection, crossover, mutation
 
 from pygame.locals import (
@@ -118,7 +118,7 @@ def main():
 
     dim = [4, 8, 4]
     num_ai = 200
-    carais = [CarAI_NN(road_collection, roadmap.roadmap, path[-1], NeuralNetwork(dim)) for _ in range(num_ai)]
+    carais = [CarAI(road_collection, roadmap.roadmap, path[-1], NeuralNetwork(dim)) for _ in range(num_ai)]
     screen.blits([(ai.car.surf, ai.car.rect) for ai in carais])
     pygame.display.update()
 
@@ -152,7 +152,7 @@ def main():
                         parents, prob_dist = selection(carais)
                         children = crossover(parents, prob_dist, dim, num_ai)
                         mutation(children)
-                        carais = [CarAI_NN(road_collection, roadmap.roadmap, path[-1], network) \
+                        carais = [CarAI(road_collection, roadmap.roadmap, path[-1], network) \
                                     for network in children]
                         generations += 1
                     else:
