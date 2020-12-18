@@ -40,8 +40,8 @@ class Roadmap:
         }
 
         self.exit_to_entry = {1:2, 2:1, 4:3, 3:4}
-        print(self.roadmap)
-        print(self.movement)
+        #print(self.roadmap)
+        #print(self.movement)
         self.ai = RoadAI()
 
     def norm(self, x):
@@ -120,7 +120,7 @@ class Roadmap:
         while len(stack) > 0:
             points, prepare = stack[-1]
             y0, x0 = points
-            print("\b" * 80, "Checking %03d, %03d" % (y0, x0), end='')
+            #print("\b" * 80, "Checking %03d, %03d" % (y0, x0), end='')
             if prepare:
                 moves, can_move = generate_possible_moves(points, coordinates)
                 if not can_move:

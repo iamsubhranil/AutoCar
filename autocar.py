@@ -1,23 +1,4 @@
-import pygame
-import random
-import sys
-
-from carai import CarAI, get_idx
-from roadmap import Roadmap
-from math import floor
-from nn import NeuralNetwork
-from ga import selection, crossover, mutation
-
-from pygame.locals import (
-    RLEACCEL,
-    K_UP,
-    K_DOWN,
-    K_LEFT,
-    K_RIGHT,
-    K_ESCAPE,
-    KEYDOWN,
-    QUIT
-)
+import config
 
 from config import (
     ROAD_SPRITE_LOCATION,
@@ -39,6 +20,27 @@ from config import (
     KEYPRESS_INTERVAL_MS,
     FLUSH_INTERVAL_MS,
     TARGET_FPS,
+)
+
+import pygame
+import random
+import sys
+
+from carai import CarAI, get_idx
+from roadmap import Roadmap
+from math import floor
+from nn import NeuralNetwork
+from ga import selection, crossover, mutation
+
+from pygame.locals import (
+    RLEACCEL,
+    K_UP,
+    K_DOWN,
+    K_LEFT,
+    K_RIGHT,
+    K_ESCAPE,
+    KEYDOWN,
+    QUIT
 )
 
 def load_roads():
