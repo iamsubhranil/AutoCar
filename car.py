@@ -1,6 +1,17 @@
 import pygame
-from config import (CAR_WIDTH, CAR_HEIGHT, CAR_SPRITE_LOCATION,
-                    CAR_SPRITE_COUNT, SCREEN_HEIGHT, SCREEN_WIDTH)
+from config import (
+    CAR_WIDTH,
+    CAR_HEIGHT,
+    CAR_SPRITE_LOCATION,
+    CAR_SPRITE_COUNT,
+    SCREEN_HEIGHT,
+    SCREEN_WIDTH,
+
+    CAR_MAXSPEED,
+    CAR_ACCELERATION_PERCEN,
+    CAR_DECELERATION_PERCEN,
+    CAR_ROTATION_DELTA,
+)
 
 from pygame.locals import (
     K_UP,
@@ -23,20 +34,20 @@ class Car(pygame.sprite.Sprite):
         self.surf = self.img.convert_alpha()
         self.rect = self.surf.get_rect(center=(CAR_WIDTH // 2, CAR_HEIGHT // 2))
         self.speed = 1
-        self.maxspeed = 4
+        self.maxspeed = CAR_MAXSPEED
         self.movement = { K_UP: (0, -self.speed),
                          K_DOWN: (0, self.speed),
                          K_LEFT: (-self.speed, 0),
                          K_RIGHT: (self.speed, 0)}
         self.speed_right = 0.1
         self.speed_bottom = 0.1
-        self.deceleration_rate = 0.90 # at each update, the speed will be this times of the previous
-        self.accelaration_rate = 1.10 # at each key press, this is the amount of speed increase
+        self.deceleration_rate = CAR_DECELERATION_PERCEN # at each update, the speed will be this times of the previous
+        self.accelaration_rate = CAR_ACCELERATION_PERCEN # at each key press, this is the amount of speed increase
         self.horizontal_move = 0
         self.vertical_move = 0
         self.target_rotation = 0
         self.current_rotation = 0
-        self.rotation_delta = 8
+        self.rotation_delta = CAR_ROTATION_DELTA
         self.killed = False
 
     def norm(self, speed):

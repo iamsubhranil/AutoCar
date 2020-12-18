@@ -21,22 +21,33 @@ from pygame.locals import (
 
 from config import (
     ROAD_SPRITE_LOCATION,
+    ROAD_SPRITE_OFFSET,
+    ROAD_SPRITE_COUNT,
+    ROAD_COLORKEY,
     BACKGROUND_SPRITE_LOCATION,
+    BACKGROUND_SPRITE_COUNT,
     SCALE_FACTOR_X,
     SCALE_FACTOR_Y,
     SCREEN_WIDTH,
     SCREEN_HEIGHT,
     ROAD_WIDTH,
-    ROAD_HEIGHT
+    ROAD_HEIGHT,
+
+    INNER_LAYERS,
+    AGENT_COUNT,
+
+    KEYPRESS_INTERVAL_MS,
+    FLUSH_INTERVAL_MS,
+    TARGET_FPS,
 )
 
 def load_roads():
-    images = [pygame.image.load(ROAD_SPRITE_LOCATION % i) for i in range(1, 21)]
+    images = [pygame.image.load(ROAD_SPRITE_LOCATION % (i + ROAD_SPRITE_OFFSET)) for i in range(ROAD_SPRITE_COUNT)]
     images = [pygame.transform.scale(x, (ROAD_WIDTH, ROAD_HEIGHT)).convert() for x in images]
     return images
 
 def load_background():
-    back = [pygame.image.load(BACKGROUND_SPRITE_LOCATION % i) for i in range(3)]
+    back = [pygame.image.load(BACKGROUND_SPRITE_LOCATION % i) for i in range(BACKGROUND_SPRITE_COUNT)]
     back = [pygame.transform.scale(img, (ROAD_WIDTH, ROAD_HEIGHT)).convert() for img in back]
     return back
 
@@ -64,7 +75,7 @@ class Road(pygame.sprite.Sprite):
         super(Road, self).__init__()
         self.roadid = roadid
         self.surf = road
-        self.surf.set_colorkey((33, 191, 143), RLEACCEL)
+        self.surf.set_colorkey(ROAD_COLORKEY, RLEACCEL)
         self.rect = self.surf.get_rect(topleft=(coordinate[0] * ROAD_WIDTH,
                                                 coordinate[1] * ROAD_HEIGHT))
         #print(self.rect)
@@ -116,16 +127,16 @@ def main():
     for road in roads:
         screen.blit(road.surf, road.rect)
 
-    dim = [4, 8, 4]
-    num_ai = 200
+    dim = [4, *INNER_LAYERS, 4]
+    num_ai = AGENT_COUNT
     carais = [CarAI(road_collection, roadmap.roadmap, path[-1], NeuralNetwork(dim)) for _ in range(num_ai)]
     screen.blits([(ai.car.surf, ai.car.rect) for ai in carais])
     pygame.display.update()
 
     CHECK_KEYS = pygame.USEREVENT + 1
-    pygame.time.set_timer(CHECK_KEYS, 24) # polling rate
+    pygame.time.set_timer(CHECK_KEYS, KEYPRESS_INTERVAL_MS) # polling rate
     FLUSH = CHECK_KEYS + 1
-    pygame.time.set_timer(FLUSH, 200)
+    pygame.time.set_timer(FLUSH, FLUSH_INTERVAL_MS)
 
     no_keys_pressed = [{K_UP: False,
                        K_DOWN: False,
@@ -174,7 +185,7 @@ def main():
             screen.blit(ai.car.surf, ai.car.rect)
         pygame.display.update()
         #print(clock.get_rawtime(), clock.get_fps())
-        clock.tick(60)
+        clock.tick(TARGET_FPS)
 
     pygame.quit()
 

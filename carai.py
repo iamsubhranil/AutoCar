@@ -6,7 +6,14 @@ from pygame.locals import (
     K_RIGHT,
 )
 
-from config import SCALE_FACTOR_X, SCALE_FACTOR_Y, ROAD_WIDTH, ROAD_HEIGHT
+from config import (
+    SCALE_FACTOR_X,
+    SCALE_FACTOR_Y,
+    ROAD_WIDTH,
+    ROAD_HEIGHT,
+    AGENT_ALIVE_WEIGHT
+)
+
 from math import floor
 from car import Car
 import sys
@@ -69,7 +76,8 @@ class CarAI:
         score = 0
         for a, b in zip(expected_output, self.prev_choice):
             score += abs(a - b)
-        self.score = ((1/score) * 0.5) + (self.alive_timer * 0.5)
+        correctness_weight = (1 - AGENT_ALIVE_WEIGHT)
+        self.score = ((1/score) * correctness_weight) + (self.alive_timer * AGENT_ALIVE_WEIGHT)
 
     def __hash__(self):
         return hash(self.score)

@@ -25,8 +25,6 @@ ACTIVAITON_DERIVATIVES = {
 
 class NeuralNetwork:
 
-    LEARNING_RATE = 0.55
-
     def __init__(self, topo, randomize_weights=True, activation_funcs = None, weights=None, biases=None):
         #self.network = []
         self.weights = weights

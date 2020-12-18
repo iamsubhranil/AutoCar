@@ -1,13 +1,26 @@
 from nn import NeuralNetwork
 import numpy as np
 
+from config import (
+    CROSSOVER_GENE_COUNT,
+    CARRYOVER_PARENT_COUNT,
+    USE_UNIFORM_CROSSOVER,
+
+    MUTATION_PROBABILITY,
+
+    PARENT_SELECTION_COUNT,
+    USE_UNIQUE_PARENTS,
+)
+
 # crossover gene count denotes the number of parents which
 # participate in generation of a new child
 # keep_parent parents are kept as children
-def crossover(parents, parent_distribution, dim, num_children, crossover_gene_count=0,
-              keep_parent=2):
+def crossover(parents, parent_distribution, dim, num_children,
+              crossover_gene_count=CROSSOVER_GENE_COUNT,
+              keep_parent=CARRYOVER_PARENT_COUNT):
 
-    num_children -= keep_parent
+    if keep_parent > 0:
+        num_children -= keep_parent
 
     if crossover_gene_count < 2:
         crossover_gene_count = len(parents)
@@ -84,7 +97,7 @@ def crossover(parents, parent_distribution, dim, num_children, crossover_gene_co
 
     return children
 
-def mutation(children, mutation_probability=0.1):
+def mutation(children, mutation_probability=MUTATION_PROBABILITY):
     dim = children[0].topology
     num_layers = len(dim)
     for child in children:
@@ -99,14 +112,20 @@ def mutation(children, mutation_probability=0.1):
 
 # inputs are carais, outputs are the best NNs
 # n best candidates are selected
-def selection(carais, n=5):
-    # choose only cars with unique scores
-    best = sorted(set(carais), key=lambda x: x.score)
+def selection(carais, n=PARENT_SELECTION_COUNT):
+    parents = carais
+    if USE_UNIQUE_PARENTS:
+        # choose only parents wth unique scores
+        parents = set(carais)
+    best = sorted(parents, key=lambda x: x.score)
     numbest = min(len(best), n)
     # best networks will have the highest scores
     selected = best[-numbest:]
-    total_score = sum([x.score for x in selected])
-    prob_dist = [i.score / total_score for i in selected]
+    if USE_UNIFORM_CROSSOVER:
+        prob_dist = [(1 / numbest)] * numbest
+    else:
+        total_score = sum([x.score for x in selected])
+        prob_dist = [i.score / total_score for i in selected]
     print("\tBest:", selected[-1].score, "Worst:", selected[0].score)
     return [ai.network for ai in selected], prob_dist
 
