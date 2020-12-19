@@ -146,6 +146,7 @@ def main():
                        K_RIGHT: False}] * num_ai
 
     generations = 0
+    killed = AGENT_COUNT
     while running:
         pressed_keys = no_keys_pressed
         if pygame.event.peek():
@@ -155,12 +156,15 @@ def main():
                 elif event.type == CHECK_KEYS:
                     passed = clock.get_rawtime()
                     pressed_keys = [ai.calculate_next_move(passed) for ai in carais]
-                    killed = 0
+                    newkilled = 0
                     for ai in carais:
                         if ai.car.killed:
-                            killed += 1
+                            newkilled += 1
                             ai.car.kill()
-                    if killed == len(carais):
+                    if newkilled == AGENT_COUNT:
+                        print("\b" * 80, "G: %-3d" % generations, "A:", "%-3d" % (num_ai - killed),
+                              "K:", "%-3d" % killed, "FT: %-3d" % clock.get_rawtime(),
+                              "FPS: %-2d" % clock.get_fps(), end='')
                         #print("here")
                         parents, prob_dist = selection(carais)
                         children = crossover(parents, prob_dist, dim, num_ai)
@@ -168,11 +172,11 @@ def main():
                         carais = [CarAI(road_collection, roadmap.roadmap, path[-1], network) \
                                     for network in children]
                         generations += 1
-                    else:
-                        print("\b" * 80, "G: %-3d" % generations, "A:", "%-3d" % (num_ai - killed),
-                              "K:", "%-3d" % killed, "FT: %-2d" % clock.get_rawtime(),
-                              "FPS: %-2d" % clock.get_fps(), end='')
+                    killed = newkilled
                 elif event.type == FLUSH:
+                    print("\b" * 80, "G: %-3d" % generations, "A:", "%-3d" % (num_ai - killed),
+                            "K:", "%-3d" % killed, "FT: %-3d" % clock.get_rawtime(),
+                            "FPS: %-2d" % clock.get_fps(), end='')
                     sys.stdout.flush()
 
         #print([v[1] for v in rects])
