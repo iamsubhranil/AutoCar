@@ -23,26 +23,32 @@ from pygame.locals import (
 from math import atan2, degrees
 import random
 
+
 class Car(pygame.sprite.Sprite):
 
-    CarImages = [pygame.image.load(CAR_SPRITE_LOCATION % i) for i in range(CAR_SPRITE_COUNT)]
-    CarImages = [pygame.transform.scale(image, (CAR_WIDTH, CAR_HEIGHT)) for image in CarImages]
+    CarImages = [pygame.image.load(CAR_SPRITE_LOCATION % i)
+                 for i in range(CAR_SPRITE_COUNT)]
+    CarImages = [pygame.transform.scale(
+        image, (CAR_WIDTH, CAR_HEIGHT)) for image in CarImages]
 
     def __init__(self):
         super(Car, self).__init__()
         self.img = random.choice(Car.CarImages)
         self.surf = self.img.convert_alpha()
-        self.rect = self.surf.get_rect(center=(CAR_WIDTH // 2, CAR_HEIGHT // 2))
+        self.rect = self.surf.get_rect(
+            center=(CAR_WIDTH // 2, CAR_HEIGHT // 2))
         self.speed = 1
         self.maxspeed = CAR_MAXSPEED
-        self.movement = { K_UP: (0, -self.speed),
+        self.movement = {K_UP: (0, -self.speed),
                          K_DOWN: (0, self.speed),
                          K_LEFT: (-self.speed, 0),
                          K_RIGHT: (self.speed, 0)}
         self.speed_right = 0.1
         self.speed_bottom = 0.1
-        self.deceleration_rate = CAR_DECELERATION_PERCEN # at each update, the speed will be this times of the previous
-        self.accelaration_rate = CAR_ACCELERATION_PERCEN # at each key press, this is the amount of speed increase
+        # at each update, the speed will be this times of the previous
+        self.deceleration_rate = CAR_DECELERATION_PERCEN
+        # at each key press, this is the amount of speed increase
+        self.accelaration_rate = CAR_ACCELERATION_PERCEN
         self.horizontal_move = 0
         self.vertical_move = 0
         self.target_rotation = 0
@@ -69,10 +75,11 @@ class Car(pygame.sprite.Sprite):
                 if sr != 0:
                     if self.horizontal_move == 0 or \
                         (self.horizontal_move == 1 and self.speed_right < 0.01) or \
-                        (self.horizontal_move == -1 and self.speed_right > -0.01):
+                            (self.horizontal_move == -1 and self.speed_right > -0.01):
                         delta = sr
                     else:
-                        delta = abs(self.speed_right * self.accelaration_rate) * sr
+                        delta = abs(self.speed_right *
+                                    self.accelaration_rate) * sr
                     self.speed_right += delta
                     self.speed_right = self.norm(self.speed_right)
                     self.rect.move_ip(self.speed_right, 0)
@@ -83,7 +90,8 @@ class Car(pygame.sprite.Sprite):
                             (self.vertical_move == -1 and self.speed_bottom > 0.01):
                         delta = sb
                     else:
-                        delta = abs(self.speed_bottom * self.accelaration_rate) * sb
+                        delta = abs(self.speed_bottom *
+                                    self.accelaration_rate) * sb
                     self.speed_bottom += delta
                     self.speed_bottom = self.norm(self.speed_bottom)
                     self.rect.move_ip(0, self.speed_bottom)
@@ -105,7 +113,8 @@ class Car(pygame.sprite.Sprite):
             rad = atan2(newy - y, newx - x)
             deg = degrees(rad) - 90
             self.target_rotation = int(deg)
-            self.target_rotation = self.rotation_delta * round(self.target_rotation / self.rotation_delta)
+            self.target_rotation = self.rotation_delta * \
+                round(self.target_rotation / self.rotation_delta)
             if self.target_rotation < -180:
                 self.target_rotation += 360
             elif self.target_rotation > 180:
@@ -113,10 +122,10 @@ class Car(pygame.sprite.Sprite):
             cr, tr = self.current_rotation, self.target_rotation
             if (cr >= 0 and tr >= 0) or (cr < 0 and tr < 0):
                 if cr > tr:
-                    #pass
+                    # pass
                     self.rotation_delta = -abs(self.rotation_delta)
                 else:
-                    #pass
+                    # pass
                     self.rotation_delta = abs(self.rotation_delta)
             else:
                 if cr >= 0:
@@ -131,13 +140,13 @@ class Car(pygame.sprite.Sprite):
                 else:
                     self.rotation_delta = abs(self.rotation_delta)
 
-
         #print(self.target_rotation, self.current_rotation, self.rotation_delta)
 
         if self.current_rotation != self.target_rotation:
             #bl, br = self.rect.bottomleft, self.rect.bottomright
             center = self.rect.center
-            self.surf = pygame.transform.rotate(self.img, self.current_rotation).convert_alpha()
+            self.surf = pygame.transform.rotate(
+                self.img, self.current_rotation).convert_alpha()
             #self.rect.bottomleft, self.rect.bottomright = bl, br
             self.rect.center = center
             self.current_rotation += self.rotation_delta
@@ -164,4 +173,3 @@ class Car(pygame.sprite.Sprite):
         else:
             self.killed = True
             self.rect.right, self.rect.bottom = y, x
-

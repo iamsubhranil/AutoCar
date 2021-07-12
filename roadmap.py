@@ -2,30 +2,34 @@ from config import ROADMAP_LOCATION
 from roadai import RoadAI, generate_possible_moves
 import random
 
+
 def load_roadmap():
     with open(ROADMAP_LOCATION) as f:
         roadmap = f.readlines()
-        #print(roadmap)
-        roadmap = filter(lambda x: len(x) > 0 and not x.startswith("#") and not x.endswith(" N\n"), roadmap)
-        roadmap = [(int(x.split()[0]) - 1, set(map(int, x.split()[1:]))) for x in roadmap]
+        # print(roadmap)
+        roadmap = filter(lambda x: len(x) > 0 and not x.startswith(
+            "#") and not x.endswith(" N\n"), roadmap)
+        roadmap = [(int(x.split()[0]) - 1, set(map(int, x.split()[1:])))
+                   for x in roadmap]
         return roadmap
+
 
 class Roadmap:
 
     def __init__(self):
         self.roadmap = load_roadmap()
-        # mapping the displacements into directions 
+        # mapping the displacements into directions
         self.movement = {
 
             # (displacement_x, displacement_y, entry): exit
             (1, 0, None): 2,
             (1, 0, 1): 2,
-            (1,-1, 1): 3,
+            (1, -1, 1): 3,
             (1, 1, 1): 4,
 
             (-1, 0, None): 1,
             (-1, 0, 2): 1,
-            (-1,-1, 2): 3,
+            (-1, -1, 2): 3,
             (-1, 1, 2): 4,
 
             (0, 1, None): 4,
@@ -39,9 +43,9 @@ class Roadmap:
             (0, -1, 4): 3
         }
 
-        self.exit_to_entry = {1:2, 2:1, 4:3, 3:4}
-        #print(self.roadmap)
-        #print(self.movement)
+        self.exit_to_entry = {1: 2, 2: 1, 4: 3, 3: 4}
+        # print(self.roadmap)
+        # print(self.movement)
         self.ai = RoadAI()
 
     def norm(self, x):
@@ -71,7 +75,7 @@ class Roadmap:
         # select the first move only based on the exit
         start, exit = self.get_end(final_moves[0])
         sprites.append(start)
-        #print(sprites)
+        # print(sprites)
         prev_move = final_moves[0]
         #entry = exit
         for move in final_moves[1:]:
@@ -90,7 +94,8 @@ class Roadmap:
                     sprites.append(road[0])
                     break
             prev_move = move
-        sprites.append(self.get_end(self.inverse(final_moves[-1]), start=False)[0])
+        sprites.append(self.get_end(
+            self.inverse(final_moves[-1]), start=False)[0])
         return sprites
 
     # given a pair of source and destination vertices, it will
@@ -99,11 +104,13 @@ class Roadmap:
     def generate_path(self, source, dest, coordinates):
         vertices = set()
         vertices.add(source)
-        path, final_moves, result = self.generate_path_it(source, dest, coordinates)
+        path, final_moves, result = self.generate_path_it(
+            source, dest, coordinates)
         if result:
             return path, final_moves
         else:
-            print("No path found from", source, "to", dest, "using", coordinates)
+            print("No path found from", source,
+                  "to", dest, "using", coordinates)
             return None, None
 
     def generate_path_it(self, source, dest, coordinates):
@@ -135,14 +142,14 @@ class Roadmap:
             moves, i = movestack[-1]
 
             # this cannot happen anymore
-            #if point != None:
+            # if point != None:
             #    print("here")
             #    vertices.discard(point)
             #    final_path.pop()
             breakall = False
             for ni, move_point in enumerate(moves[i:], i):
                 move_y, move_x = move_point
-                #print(movestack)
+                # print(movestack)
                 #print(points, move_y, move_x)
                 point = (y0 + move_y, x0 + move_x)
                 if point not in vertices:

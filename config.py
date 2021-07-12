@@ -51,13 +51,16 @@ USE_UNIQUE_PARENTS = True
 
 AGENT_ALIVE_WEIGHT = 0.5
 
+
 def default(val):
     return " (default: " + str(val) + ")"
+
 
 def argerr(arg, *err):
     print("AutoCar: error: argument", "-" + arg[0] + "/--" + arg + ":", *err)
     print("Use -h to see argument help.")
     sys.exit(0)
+
 
 def verify_lowerbound(values, args, bound):
     for arg in args:
@@ -65,11 +68,14 @@ def verify_lowerbound(values, args, bound):
         if v and v < bound:
             argerr(arg, "expected a value >= " + str(bound) + "!")
 
+
 def verify_bothbound(values, args, lower, upper):
     for arg in args:
         v = values.__dict__[arg]
         if v and (lower > v or v > upper):
-            argerr(arg, "expected " + str(lower) + " <= value <= " + str(upper) + "!")
+            argerr(arg, "expected " + str(lower) +
+                   " <= value <= " + str(upper) + "!")
+
 
 def parse_args():
     global INNER_LAYERS
@@ -97,7 +103,7 @@ def parse_args():
                             + " using neural networks and a genetic algorithm.")
 
     parser.add_argument("-n", "--numagents", metavar="N", help="number of agents in each generation"
-                        + default(AGENT_COUNT),type=int)
+                        + default(AGENT_COUNT), type=int)
     parser.add_argument("-l", "--layers", metavar="L1 L2", help="dimension of inner layers of the neural network"
                         + default(INNER_LAYERS), type=int, nargs='*')
     parser.add_argument("-k", "--keypress", metavar="K",
@@ -132,13 +138,14 @@ def parse_args():
                         + default(USE_UNIQUE_PARENTS), action="store_true")
 
     parser.add_argument("-w", "--weight", metavar="W", help="weight given to the age of an agent in range [0, 1.0],"
-                        + " the rest is given to its correctness" + default(AGENT_ALIVE_WEIGHT),
+                        + " the rest is given to its correctness" +
+                        default(AGENT_ALIVE_WEIGHT),
                         type=float)
     values = parser.parse_args()
 
     verify_lowerbound(values, ["numagents", "keypress", "output", "fps",
-                                        "rotation", "speed", "genes", "carryover",
-                                        "parent"], 1)
+                               "rotation", "speed", "genes", "carryover",
+                               "parent"], 1)
 
     verify_lowerbound(values, ["accel", "decel"], 0.0)
 
@@ -163,12 +170,14 @@ def parse_args():
 
     if values.accel:
         if values.accel < 1.0:
-            print("warning: an acceleration value of " + str(values.accel) + " will actually decelerate the car!")
+            print("warning: an acceleration value of " +
+                  str(values.accel) + " will actually decelerate the car!")
         CAR_ACCELERATION_PERCEN = values.accel
 
     if values.decel:
         if values.decel > 1.0:
-            print("warning: a deceleration value of " + str(values.decel) + " will actually accelerate the car!")
+            print("warning: a deceleration value of " +
+                  str(values.decel) + " will actually accelerate the car!")
         CAR_DECELERATION_PERCEN = values.decel
 
     if values.numagents:
@@ -178,8 +187,8 @@ def parse_args():
         PARENT_SELECTION_COUNT = values.parent
 
     if PARENT_SELECTION_COUNT > AGENT_COUNT:
-            argerr("parent", "number of selected parents(" + str(PARENT_SELECTION_COUNT) + ")"
-                   + " must not be greater than total agents(" + str(AGENT_COUNT) + ")!")
+        argerr("parent", "number of selected parents(" + str(PARENT_SELECTION_COUNT) + ")"
+               + " must not be greater than total agents(" + str(AGENT_COUNT) + ")!")
 
     if values.genes:
         CROSSOVER_GENE_COUNT = values.genes
@@ -204,5 +213,6 @@ def parse_args():
     USE_UNIFORM_CROSSOVER = values.uniform
 
     os.environ["PYGAME_HIDE_SUPPORT_PROMPT"] = "hide"
+
 
 parse_args()

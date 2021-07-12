@@ -43,19 +43,26 @@ from pygame.locals import (
     QUIT
 )
 
+
 def load_roads():
-    images = [pygame.image.load(ROAD_SPRITE_LOCATION % (i + ROAD_SPRITE_OFFSET)) for i in range(ROAD_SPRITE_COUNT)]
-    images = [pygame.transform.scale(x, (ROAD_WIDTH, ROAD_HEIGHT)).convert() for x in images]
+    images = [pygame.image.load(ROAD_SPRITE_LOCATION % (
+        i + ROAD_SPRITE_OFFSET)) for i in range(ROAD_SPRITE_COUNT)]
+    images = [pygame.transform.scale(
+        x, (ROAD_WIDTH, ROAD_HEIGHT)).convert() for x in images]
     return images
 
+
 def load_background():
-    back = [pygame.image.load(BACKGROUND_SPRITE_LOCATION % i) for i in range(BACKGROUND_SPRITE_COUNT)]
-    back = [pygame.transform.scale(img, (ROAD_WIDTH, ROAD_HEIGHT)).convert() for img in back]
+    back = [pygame.image.load(BACKGROUND_SPRITE_LOCATION % i)
+            for i in range(BACKGROUND_SPRITE_COUNT)]
+    back = [pygame.transform.scale(
+        img, (ROAD_WIDTH, ROAD_HEIGHT)).convert() for img in back]
     return back
 
+
 def print_path(path, final_moves, endy, endx):
-    #print(path)
-    #print(final_moves)
+    # print(path)
+    # print(final_moves)
     print()
     for j in range(endx + 1):
         for i in range(endy + 1):
@@ -71,6 +78,7 @@ def print_path(path, final_moves, endy, endx):
                 print(" ", end=' ')
         print()
 
+
 class Road(pygame.sprite.Sprite):
 
     def __init__(self, coordinate, road, roadid):
@@ -80,24 +88,29 @@ class Road(pygame.sprite.Sprite):
         self.surf.set_colorkey(ROAD_COLORKEY, RLEACCEL)
         self.rect = self.surf.get_rect(topleft=(coordinate[0] * ROAD_WIDTH,
                                                 coordinate[1] * ROAD_HEIGHT))
-        #print(self.rect)
+        # print(self.rect)
+
     def update(self):
         pass
 
+
 def gettile(coordinate, tiles):
-    i, j = floor(coordinate[0] / ROAD_WIDTH), floor(coordinate[1] / ROAD_HEIGHT)
+    i, j = floor(coordinate[0] /
+                 ROAD_WIDTH), floor(coordinate[1] / ROAD_HEIGHT)
     if i >= SCALE_FACTOR_Y:
         i -= 1
     if j >= SCALE_FACTOR_X:
         j -= 1
     return tiles[i * SCALE_FACTOR_X + j]
 
+
 def main():
     pygame.init()
 
     roadmap = Roadmap()
     endy, endx = SCALE_FACTOR_Y, SCALE_FACTOR_X
-    path, final_moves = roadmap.generate_path((0, 0), (endy - 1, endx - 1), (0, 0, endy - 1, endx - 1))
+    path, final_moves = roadmap.generate_path(
+        (0, 0), (endy - 1, endx - 1), (0, 0, endy - 1, endx - 1))
     print_path(path, final_moves, endy, endx)
     sprite_indices = roadmap.generate_sprites(final_moves)
 
@@ -116,7 +129,7 @@ def main():
     back = load_background()
     for i in range(endy):
         for j in range(endx):
-            #if (i, j) not in path:
+            # if (i, j) not in path:
             bg = Road((i, j), random.choice(back), 0)
             background_group.add(bg)
             background_collection.append(bg)
@@ -131,12 +144,13 @@ def main():
 
     dim = [4, *INNER_LAYERS, 4]
     num_ai = AGENT_COUNT
-    carais = [CarAI(road_collection, roadmap.roadmap, path[-1], NeuralNetwork(dim)) for _ in range(num_ai)]
+    carais = [CarAI(road_collection, roadmap.roadmap, path[-1],
+                    NeuralNetwork(dim)) for _ in range(num_ai)]
     screen.blits([(ai.car.surf, ai.car.rect) for ai in carais])
     pygame.display.update()
 
     CHECK_KEYS = pygame.USEREVENT + 1
-    pygame.time.set_timer(CHECK_KEYS, KEYPRESS_INTERVAL_MS) # polling rate
+    pygame.time.set_timer(CHECK_KEYS, KEYPRESS_INTERVAL_MS)  # polling rate
     FLUSH = CHECK_KEYS + 1
     pygame.time.set_timer(FLUSH, FLUSH_INTERVAL_MS)
 
@@ -155,7 +169,8 @@ def main():
                     running = False
                 elif event.type == CHECK_KEYS:
                     passed = clock.get_rawtime()
-                    pressed_keys = [ai.calculate_next_move(passed) for ai in carais]
+                    pressed_keys = [ai.calculate_next_move(
+                        passed) for ai in carais]
                     newkilled = 0
                     for ai in carais:
                         if ai.car.killed:
@@ -165,18 +180,18 @@ def main():
                         print("\b" * 80, "G: %-3d" % generations, "A:", "%-3d" % (num_ai - killed),
                               "K:", "%-3d" % killed, "FT: %-3d" % clock.get_rawtime(),
                               "FPS: %-2d" % clock.get_fps(), end='')
-                        #print("here")
+                        # print("here")
                         parents, prob_dist = selection(carais)
                         children = crossover(parents, prob_dist, dim, num_ai)
                         mutation(children)
-                        carais = [CarAI(road_collection, roadmap.roadmap, path[-1], network) \
-                                    for network in children]
+                        carais = [CarAI(road_collection, roadmap.roadmap, path[-1], network)
+                                  for network in children]
                         generations += 1
                     killed = newkilled
                 elif event.type == FLUSH:
                     print("\b" * 80, "G: %-3d" % generations, "A:", "%-3d" % (num_ai - killed),
-                            "K:", "%-3d" % killed, "FT: %-3d" % clock.get_rawtime(),
-                            "FPS: %-2d" % clock.get_fps(), end='')
+                          "K:", "%-3d" % killed, "FT: %-3d" % clock.get_rawtime(),
+                          "FPS: %-2d" % clock.get_fps(), end='')
                     sys.stdout.flush()
 
         #print([v[1] for v in rects])
@@ -194,6 +209,7 @@ def main():
         clock.tick(TARGET_FPS)
 
     pygame.quit()
+
 
 if __name__ == "__main__":
     main()

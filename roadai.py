@@ -1,5 +1,6 @@
 from config import MOVE_UP, MOVE_DOWN, MOVE_LEFT, MOVE_RIGHT
 
+
 def generate_possible_moves(source, coordinates):
     y0, x0 = source
     moves = []
@@ -16,6 +17,7 @@ def generate_possible_moves(source, coordinates):
 
     return moves, len(moves) > 0
 
+
 class RoadAI:
 
     def __init__(self):
@@ -30,12 +32,12 @@ class RoadAI:
 
     def g_score(self, vertex):
         if vertex not in self.g_scores:
-            return 99999 # arbitrarily large value
+            return 99999  # arbitrarily large value
         return self.g_scores[vertex]
 
     def f_score(self, vertex):
         if vertex not in self.f_scores:
-            return 99999 # arbitrarily large value
+            return 99999  # arbitrarily large value
         return self.f_scores[vertex]
 
     def get_neighbours(self, point, coordinates):
@@ -43,12 +45,12 @@ class RoadAI:
         nmoves = []
         for move in moves:
             nmoves.append((point[0] + move[0], point[1] + move[1]))
-        #print(nmoves)
+        # print(nmoves)
         return nmoves
 
     def d(self, current, pixel):
         if pixel in self.vertices:
-            return 99999 # cannot be reached
+            return 99999  # cannot be reached
         return 1
 
     def generate_directions(self, cameFrom, current):
@@ -61,7 +63,7 @@ class RoadAI:
     # A* search
     # directly copied from Wikipedia
     def generate_moves(self, start):
-        #print(start)
+        # print(start)
         self.f_scores = {}
         self.g_scores = {}
         #print_("Goal : " +  str(goal) + "Start:" + str(start))
@@ -79,7 +81,7 @@ class RoadAI:
             current = min(openSet, key=self.f_score)
             if current == self.goal:
                 #directions = self.generate_directions(cameFrom, current)
-                #return directions
+                # return directions
                 return True
 
             openSet.remove(current)
@@ -91,8 +93,8 @@ class RoadAI:
                 if tentative_gscore < self.g_score(neighbour):
                     #cameFrom[neighbour] = (current, direction)
                     self.g_scores[neighbour] = tentative_gscore
-                    self.f_scores[neighbour] = self.g_score(neighbour) + self.h(neighbour)
+                    self.f_scores[neighbour] = self.g_score(
+                        neighbour) + self.h(neighbour)
                     if neighbour not in openSet:
                         openSet.append(neighbour)
         return False
-

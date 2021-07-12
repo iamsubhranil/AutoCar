@@ -1,5 +1,6 @@
 import numpy as np
 
+
 def sigmoid(values):
     #print("ip:", -values)
     #values = np.interp(values, (min(values), max(values)), (-4, 4))
@@ -7,25 +8,29 @@ def sigmoid(values):
     #print("op:", op)
     return op
 
+
 def sigmoid_derivative(x, out):
     y = sigmoid(x)
     return y * (1.0 - y)
 
-#def softmax_derivative(values, out):
+# def softmax_derivative(values, out):
 #    return [0.01 * x for x in values]
+
 
 class NeuralNetworkError(Exception):
 
     def __init__(self, message):
         super().__init__(message)
 
+
 ACTIVAITON_DERIVATIVES = {
     sigmoid: sigmoid_derivative
 }
 
+
 class NeuralNetwork:
 
-    def __init__(self, topo, randomize_weights=True, activation_funcs = None, weights=None, biases=None):
+    def __init__(self, topo, randomize_weights=True, activation_funcs=None, weights=None, biases=None):
         #self.network = []
         self.weights = weights
         self.biases = biases
@@ -34,27 +39,31 @@ class NeuralNetwork:
         if activation_funcs is None:
             activation_funcs = [sigmoid] * (len(topo2) - 1)
             activation_funcs.append(sigmoid)
-            #activation_funcs.append(softmax)
+            # activation_funcs.append(softmax)
         self.activation_func = activation_funcs
-        self.activation_derivative = [ACTIVAITON_DERIVATIVES[x] for x in self.activation_func]
+        self.activation_derivative = [
+            ACTIVAITON_DERIVATIVES[x] for x in self.activation_func]
+
+        random = np.random
         if self.biases is None:
             if randomize_weights:
-                self.biases = [np.random.rand(x) for x in topo2]
-                #print(self.biases)
+                self.biases = [random.rand(x) for x in topo2]
+                # print(self.biases)
             else:
                 self.biases = [np.zeros(x) for x in topo2]
 
         if self.weights == None:
             topo2.append(0)
             if randomize_weights:
-                self.weights = [np.random.rand(count, topo2[idx - 1]) *
-                                          np.sqrt(2 / count) for idx, count in enumerate(topo2[:-1])]
+                self.weights = [random.rand(count, topo2[idx - 1]) *
+                                np.sqrt(2 / count) for idx, count in enumerate(topo2[:-1])]
             else:
-                self.weights = [np.zeros((count, topo2[idx - 1])) for idx, count in enumerate(topo2[:-1])]
-        #print("Initialization")
-        #print("--------------")
-        #self.dump()
-        #print("--------------")
+                self.weights = [np.zeros((count, topo2[idx - 1]))
+                                for idx, count in enumerate(topo2[:-1])]
+        # print("Initialization")
+        # print("--------------")
+        # self.dump()
+        # print("--------------")
 
     def set_weights_and_biases(self, w, b):
         self.weights = w
@@ -65,7 +74,8 @@ class NeuralNetwork:
             for i, level in enumerate(self.weights):
                 print("Level:", i + 1)
                 for j, weight in enumerate(level):
-                    print("\tNeuron:", j + 1, "bias:", self.biases[i][j], "weights:", weight)
+                    print("\tNeuron:", j + 1, "bias:",
+                          self.biases[i][j], "weights:", weight)
         else:
             with open(file, "wb") as f:
                 np.save(f, self.topology)
@@ -94,7 +104,7 @@ class NeuralNetwork:
             prev_weight_sum = weight_sums
             # append the sum for previous level
             all_weight_sums.insert(0, weight_sums)
-        #print(all_weight_sums)
+        # print(all_weight_sums)
         from PIL import Image, ImageDraw
         for i, weight_sums in enumerate(all_weight_sums):
             # find the sqrt of length
@@ -107,7 +117,8 @@ class NeuralNetwork:
             # size of each color square
             sqr_width = 100
             sqr_height = 100
-            level_image = Image.new("RGB", (width * sqr_width, height * sqr_height))
+            level_image = Image.new(
+                "RGB", (width * sqr_width, height * sqr_height))
             draw_image = ImageDraw.Draw(level_image)
             present_height = 0
             present_width = 0
@@ -121,7 +132,8 @@ class NeuralNetwork:
                     #print(level_max, level_min, present_val)
                     x0, y0 = present_width, present_height
                     x1, y1 = x0 + sqr_width, y0 + sqr_height
-                    draw_image.rectangle([x0, y0, x1, y1], fill=self.rgb(level_min, level_max, present_val))
+                    draw_image.rectangle([x0, y0, x1, y1], fill=self.rgb(
+                        level_min, level_max, present_val))
                     present_width += sqr_width
                     putpixel_count += 1
                     if putpixel_count == size:
@@ -150,13 +162,13 @@ class NeuralNetwork:
         #lastlevel = len(level) - 1
         for levelidx, level in enumerate(self.weights[1:], 1):
             temp_output = np.dot(level, output) + self.biases[levelidx]
-            #print(temp_output)
+            # print(temp_output)
             new_output = self.activation_func[levelidx](temp_output)
             output = new_output
             if return_all_outputs:
                 all_outputs.append(output)
                 net_outputs.append(temp_output)
-        #print(output)
+        # print(output)
         if return_all_outputs:
             return (all_outputs, net_outputs)
         else:

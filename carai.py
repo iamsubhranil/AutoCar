@@ -18,8 +18,10 @@ from math import floor
 from car import Car
 import sys
 
+
 def get_idx(y, x):
     return floor(y / ROAD_WIDTH), floor(x / ROAD_HEIGHT)
+
 
 class CarAI:
 
@@ -34,7 +36,7 @@ class CarAI:
         }
         self.counter = 1
         self.road_collection = road_collection
-        self.entering_from = { # maps present direction with possible entry
+        self.entering_from = {  # maps present direction with possible entry
             K_UP: 4,
             K_DOWN: 3,
             K_LEFT: 2,
@@ -77,7 +79,8 @@ class CarAI:
         for a, b in zip(expected_output, self.prev_choice):
             score += abs(a - b)
         correctness_weight = (1 - AGENT_ALIVE_WEIGHT)
-        self.score = ((1/score) * correctness_weight) + (self.alive_timer * AGENT_ALIVE_WEIGHT)
+        self.score = ((1/score) * correctness_weight) + \
+            (self.alive_timer * AGENT_ALIVE_WEIGHT)
 
     def __hash__(self):
         return hash(self.score)
@@ -106,15 +109,18 @@ class CarAI:
         self.present_cell = (base_i, base_j)
 
         max_right = self.calculate_max_distance(K_RIGHT, SCALE_FACTOR_Y - base_i - 1,
-            (base_i + 1) * SCALE_FACTOR_X + base_j, (SCALE_FACTOR_Y - 1) * SCALE_FACTOR_X + base_j + 1,
-                SCALE_FACTOR_X)
+                                                (base_i + 1) * SCALE_FACTOR_X +
+                                                base_j, (SCALE_FACTOR_Y - 1) *
+                                                SCALE_FACTOR_X + base_j + 1,
+                                                SCALE_FACTOR_X)
         max_left = self.calculate_max_distance(K_LEFT, base_i,
-                (base_i - 1) * SCALE_FACTOR_X + base_j, -1,
-                -SCALE_FACTOR_X)
+                                               (base_i - 1) *
+                                               SCALE_FACTOR_X + base_j, -1,
+                                               -SCALE_FACTOR_X)
         max_up = self.calculate_max_distance(K_UP, base_j,
-                base_i * SCALE_FACTOR_X + base_j - 1, base_i * SCALE_FACTOR_X - 1, -1)
+                                             base_i * SCALE_FACTOR_X + base_j - 1, base_i * SCALE_FACTOR_X - 1, -1)
         max_down = self.calculate_max_distance(K_DOWN, SCALE_FACTOR_X - base_j - 1,
-                base_i * SCALE_FACTOR_X + base_j + 1, (base_i + 1) * SCALE_FACTOR_X, 1)
+                                               base_i * SCALE_FACTOR_X + base_j + 1, (base_i + 1) * SCALE_FACTOR_X, 1)
 
         can_move = [[K_LEFT, max_left, -max_left, 0, self.keymap[K_LEFT]],
                     [K_RIGHT, max_right, max_right, 0, self.keymap[K_RIGHT]],
